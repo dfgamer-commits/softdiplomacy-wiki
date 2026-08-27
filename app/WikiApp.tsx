@@ -17,7 +17,7 @@ type WikiPage = PageIndex & { html: string };
 type Route =
   | { kind: 'home' }
   | { kind: 'all' }
-  | { kind: 'article'; slug: string };
+  | { kind: 'article'; slug: string; section?: string };
 
 const AIR_SLUGS = [
   'Air_Units',
@@ -43,9 +43,12 @@ function parseRoute(): Route {
   if (!hash) return { kind: 'home' };
   if (hash === 'all') return { kind: 'all' };
   if (hash.startsWith('article/')) {
+    const articlePath = hash.slice('article/'.length);
+    const [slug, section] = articlePath.split('?section=', 2);
     return {
       kind: 'article',
-      slug: decodeURIComponent(hash.slice('article/'.length)),
+      slug: decodeURIComponent(slug),
+      section: section ? decodeURIComponent(section) : undefined,
     };
   }
   return { kind: 'home' };
@@ -53,6 +56,20 @@ function parseRoute(): Route {
 
 function articleHref(slug: string) {
   return `#/article/${encodeURIComponent(slug)}`;
+}
+
+function articleSectionHref(slug: string, section: string) {
+  return `${articleHref(slug)}?section=${encodeURIComponent(section)}`;
+}
+
+function headingsFromHtml(html: string): Heading[] {
+  const headings: Heading[] = [];
+  const pattern = /<h([1-6])\b[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/gi;
+  for (const match of html.matchAll(pattern)) {
+    const text = match[3].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    headings.push({ id: match[2], text, level: Number(match[1]) });
+  }
+  return headings;
 }
 
 function Mark({ kind }: { kind: 'plane' | 'jet' | 'helicopter' }) {
@@ -266,7 +283,7 @@ function AllPages({ index, initialQuery = '' }: { index: PageIndex[]; initialQue
   );
 }
 
-function Article({ index, slug }: { index: PageIndex[]; slug: string }) {
+function Article({ index, slug, section }: { index: PageIndex[]; slug: string; section?: string }) {
   const [page, setPage] = useState<WikiPage | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -279,14 +296,30 @@ function Article({ index, slug }: { index: PageIndex[]; slug: string }) {
       .catch(() => setError(true));
   }, [slug]);
 
+  useEffect(() => {
+    if (!page || !section) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(section)?.scrollIntoView({ block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [page, section]);
+
+  const articleHeadings = useMemo(
+    () => (page ? headingsFromHtml(page.html) : []),
+    [page],
+  );
+
   const interceptLinks = (event: MouseEvent<HTMLElement>) => {
     const anchor = (event.target as HTMLElement).closest('a');
     if (!anchor) return;
     const raw = anchor.getAttribute('href');
     if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return;
     event.preventDefault();
-    const [targetSlug] = raw.slice(1).split('#');
+    const [targetSlug, targetSection] = raw.slice(1).split('#', 2);
     window.location.hash = `/article/${encodeURIComponent(targetSlug)}`;
+    if (targetSection) {
+      window.location.hash = `/article/${encodeURIComponent(targetSlug)}?section=${encodeURIComponent(targetSection)}`;
+    }
   };
 
   if (error) {
@@ -318,8 +351,8 @@ function Article({ index, slug }: { index: PageIndex[]; slug: string }) {
             )}
           </footer>
         </article>
-        {page.headings?.length > 1 && (
-          <aside className="toc"><p className="eyebrow">On this page</p><ul>{page.headings.slice(0, 16).map((heading) => <li className={heading.level > 2 ? 'toc-sub' : ''} key={heading.id}><a href={`#${heading.id}`}>{heading.text}</a></li>)}</ul></aside>
+        {articleHeadings.length > 1 && (
+          <aside className="toc"><p className="eyebrow">On this page</p><ul>{articleHeadings.map((heading) => <li className={heading.level > 1 ? 'toc-sub' : ''} key={heading.id}><a href={articleSectionHref(slug, heading.id)}>{heading.text}</a></li>)}</ul></aside>
         )}
       </main>
     </Shell>
@@ -352,7 +385,7 @@ export default function WikiApp() {
       <Header onSearch={search} />
       {route.kind === 'home' && <Home index={index} />}
       {route.kind === 'all' && <AllPages index={index} initialQuery={searchQuery} />}
-      {route.kind === 'article' && <Article key={route.slug} index={index} slug={route.slug} />}
+      {route.kind === 'article' && <Article key={route.slug} index={index} slug={route.slug} section={route.section} />}
       <footer className="site-footer">
         <div><strong>SoftDiplomacy Wiki</strong><span>Independent community documentation.</span></div>
         <div><a href="https://github.com/dfgamer-commits/soft-diplomacy" target="_blank" rel="noreferrer">Game repository</a><a href="https://openfront.wiki/" target="_blank" rel="noreferrer">OpenFront community wiki</a></div>
