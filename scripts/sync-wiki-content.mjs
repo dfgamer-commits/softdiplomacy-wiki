@@ -13,6 +13,30 @@ const auditedRevision = auditIndex >= 0 ? args[auditIndex + 1] : 'unknown';
 const wikiAuditIndex = args.indexOf('--wiki-audit');
 const auditedWikiRevision =
   wikiAuditIndex >= 0 ? args[wikiAuditIndex + 1] : 'unknown';
+const auditedAtIndex = args.indexOf('--audited-at');
+const auditedAt =
+  auditedAtIndex >= 0
+    ? args[auditedAtIndex + 1]
+    : new Date().toISOString().slice(0, 10);
+if (!/^\d{4}-\d{2}-\d{2}$/.test(auditedAt)) {
+  throw new Error(`Invalid --audited-at date: ${auditedAt}`);
+}
+const [auditYear, auditMonth, auditDay] = auditedAt.split('-').map(Number);
+const auditMonthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+const auditedAtDisplay = `${auditDay} ${auditMonthNames[auditMonth - 1]} ${auditYear}`;
 
 async function loadOfficialPages() {
   if (sourcePath) {
@@ -248,7 +272,7 @@ gold = floor(baseGold * playerGoldMultiplier)</pre><p>For a normal completed fli
       { id: 'Cadence', text: 'Cadence', level: 2 },
     ],
     `<p>This page records the latest source audit used to update the SoftDiplomacy game and wiki.</p>
-    <h2 id="Latest_audit">Latest audit</h2><div class="sd-spec-grid"><div class="sd-spec"><span>Audit date</span><strong>27 Aug 2026</strong></div><div class="sd-spec"><span>OpenFront main</span><strong>${auditedRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>OpenFront wiki</span><strong>${auditedWikiRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>Wiki coverage</span><strong>Every official source page</strong></div><div class="sd-spec"><span>Next check</span><strong>Within 36 hours</strong></div></div>
+    <h2 id="Latest_audit">Latest audit</h2><div class="sd-spec-grid"><div class="sd-spec"><span>Audit date</span><strong>${auditedAtDisplay}</strong></div><div class="sd-spec"><span>OpenFront main</span><strong>${auditedRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>OpenFront wiki</span><strong>${auditedWikiRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>Wiki coverage</span><strong>Every official source page</strong></div><div class="sd-spec"><span>Next check</span><strong>Within 36 hours</strong></div></div>
     <h2 id="Sources">Sources</h2><ul><li><a class="external" href="https://github.com/openfrontio/OpenFrontIO">Official OpenFront GitHub repository</a></li><li><a class="external" href="https://openfront.wiki/">OpenFront community wiki</a></li><li><a class="external" href="https://github.com/openfrontio/wiki">OpenFront wiki source repository</a></li><li><a class="external" href="https://github.com/dfgamer-commits/soft-diplomacy">SoftDiplomacy game repository</a></li></ul>
     <h2 id="Cadence">Cadence</h2><p>An automated task reopens this audit every 36 hours. It compares source history, reviews wiki changes, validates compatibility, updates these pages, and pushes only after the relevant checks pass.</p>`,
   ),
@@ -283,7 +307,7 @@ await writeFile(path.join(contentRoot, 'index.json'), `${JSON.stringify(index)}\
 await writeFile(
   path.join(contentRoot, 'sync.json'),
   `${JSON.stringify({
-    auditedAt: '2026-08-27',
+    auditedAt,
     upstreamRevision: auditedRevision,
     upstreamWikiRevision: auditedWikiRevision,
     officialPageCount: officialPages.length,

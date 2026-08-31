@@ -12,7 +12,7 @@ pnpm build
 
 ## Refreshing OpenFront wiki content
 
-Run `node scripts/sync-wiki-content.mjs` to download the current OpenFront wiki data, split it into lazy-loaded article files, and reapply the SoftDiplomacy pages. Pass `--audit <OpenFront commit>` to record the reviewed upstream revision.
+Run `node scripts/sync-wiki-content.mjs` to download the current OpenFront wiki data, split it into lazy-loaded article files, and reapply the SoftDiplomacy pages. Pass `--audit <OpenFront commit>`, `--wiki-audit <wiki commit>`, and `--audited-at <YYYY-MM-DD>` to record a reproducible audit.
 
 ## Source projects
 
