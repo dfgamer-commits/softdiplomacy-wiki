@@ -460,6 +460,63 @@ function AllPages({ index, initialQuery = '' }: { index: PageIndex[]; initialQue
   );
 }
 
+const AIR_TOPIC_CARDS = [
+  {
+    slug: 'Airport_SoftDiplomacy',
+    label: 'Airport',
+    role: 'Build the network',
+    kind: 'airport',
+  },
+  {
+    slug: 'Passenger_Plane',
+    label: 'Passenger plane',
+    role: 'Run air trade',
+    kind: 'plane',
+  },
+  {
+    slug: 'Fighter_Jet',
+    label: 'Fighter jet',
+    role: 'Control the sky',
+    kind: 'jet',
+  },
+  {
+    slug: 'Attack_Helicopter',
+    label: 'Attack helicopter',
+    role: 'Deploy troops',
+    kind: 'helicopter',
+  },
+] as const;
+
+function AirTopicDeck() {
+  return (
+    <section className="air-topic-deck" aria-labelledby="air-topic-title">
+      <div className="air-topic-heading">
+        <p className="eyebrow">Choose a flight path</p>
+        <h2 id="air-topic-title">Continue through air command</h2>
+      </div>
+      <div className="air-topic-grid">
+        {AIR_TOPIC_CARDS.map((topic, index) => (
+          <a
+            className={`air-topic-card air-topic-card-${topic.kind}`}
+            href={articleHref(topic.slug)}
+            key={topic.slug}
+            style={{ '--topic-order': index } as React.CSSProperties}
+          >
+            <span className="air-topic-index">0{index + 1}</span>
+            <span className="air-topic-symbol" aria-hidden="true">
+              {topic.kind === 'airport' ? <span className="airport-topic-mark">◆</span> : <Mark kind={topic.kind} />}
+            </span>
+            <small>{topic.role}</small>
+            <strong>{topic.label}</strong>
+            <span className="air-topic-flight" aria-hidden="true"><i /></span>
+            <span className="air-topic-arrow" aria-hidden="true">↗</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Article({ index, slug, section }: { index: PageIndex[]; slug: string; section?: string }) {
   const [page, setPage] = useState<WikiPage | null>(null);
   const [error, setError] = useState(false);
@@ -493,7 +550,9 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const revealTargets = Array.from(
-      article.querySelectorAll<HTMLElement>('.wiki-content > *, .article-license'),
+      article.querySelectorAll<HTMLElement>(
+        '.wiki-content > *, .air-topic-deck, .air-topic-card, .article-license',
+      ),
     );
 
     revealTargets.forEach((target, position) => {
@@ -588,6 +647,7 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
           {page.cats?.length > 0 && <div className="tag-row">{page.cats.filter((cat) => !/stub|broken|all pages/i.test(cat)).slice(0, 6).map((cat) => <span key={cat}>{cat}</span>)}</div>}
           <div className="rule" />
           <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
+          {slug === 'Air_Units' && <AirTopicDeck />}
           <footer className="article-license">
             {page.source === 'liquipedia' ? (
               <>Material sourced from <a href={page.sourceUrl} target="_blank" rel="noreferrer">Liquipedia</a> under <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noreferrer">CC BY-SA 3.0</a>.</>
