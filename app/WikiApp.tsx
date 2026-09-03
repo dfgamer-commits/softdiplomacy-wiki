@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -25,6 +26,10 @@ type Route =
   | { kind: 'home' }
   | { kind: 'all' }
   | { kind: 'article'; slug: string; section?: string };
+
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => { finished: Promise<void> };
+};
 
 const AIR_SLUGS = [
   'Air_Units',
@@ -147,7 +152,7 @@ function Shell({
         </ul>
         <div className="sync-card">
           <span className="live-dot" />
-          <p><strong>36-hour sync</strong><br />OpenFront source and wiki monitored.</p>
+          <p><strong>48-hour sync</strong><br />OpenFront source and wiki monitored.</p>
         </div>
       </aside>
       {children}
@@ -157,6 +162,12 @@ function Shell({
 
 function CampaignStory() {
   const storyRef = useRef<HTMLElement>(null);
+  const tradePathRef = useRef<SVGPathElement>(null);
+  const fighterPathRef = useRef<SVGPathElement>(null);
+  const helicopterPathRef = useRef<SVGPathElement>(null);
+  const tradeUnitRef = useRef<SVGGElement>(null);
+  const fighterUnitRef = useRef<SVGGElement>(null);
+  const helicopterUnitRef = useRef<SVGGElement>(null);
 
   useEffect(() => {
     const story = storyRef.current;
@@ -164,25 +175,23 @@ function CampaignStory() {
 
     let frame = 0;
     const clamp = (value: number) => Math.min(1, Math.max(0, value));
-    const curve = (
+    const moveUnit = (
+      path: SVGPathElement | null,
+      unit: SVGGElement | null,
       progress: number,
-      start: [number, number],
-      control: [number, number],
-      end: [number, number],
     ) => {
-      const inverse = 1 - progress;
-      return [
-        inverse * inverse * start[0] +
-          2 * inverse * progress * control[0] +
-          progress * progress * end[0],
-        inverse * inverse * start[1] +
-          2 * inverse * progress * control[1] +
-          progress * progress * end[1],
-      ];
-    };
-    const setMarker = (name: string, point: number[]) => {
-      story.style.setProperty(`--${name}-x`, `${point[0]}%`);
-      story.style.setProperty(`--${name}-y`, `${point[1]}%`);
+      if (!path || !unit) return;
+      const length = path.getTotalLength();
+      const distance = length * progress;
+      const point = path.getPointAtLength(distance);
+      const tangentDistance = Math.max(1, length * 0.012);
+      const before = path.getPointAtLength(Math.max(0, distance - tangentDistance));
+      const after = path.getPointAtLength(Math.min(length, distance + tangentDistance));
+      const heading = Math.atan2(after.y - before.y, after.x - before.x) * (180 / Math.PI);
+      unit.setAttribute(
+        'transform',
+        `translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) rotate(${heading.toFixed(2)})`,
+      );
     };
 
     const update = () => {
@@ -208,14 +217,12 @@ function CampaignStory() {
         '--helicopter-dash',
         (100 - helicopter * 100).toFixed(2),
       );
-      setMarker('trade', curve(trade, [28, 67], [54, 23], [79, 31]));
-      setMarker(
-        'fighter',
-        curve(fighter, [84, 72], [69, 40], [57, 37]),
-      );
-      setMarker(
-        'helicopter',
-        curve(helicopter, [48, 77], [31, 56], [18, 35]),
+      moveUnit(tradePathRef.current, tradeUnitRef.current, trade);
+      moveUnit(fighterPathRef.current, fighterUnitRef.current, fighter);
+      moveUnit(
+        helicopterPathRef.current,
+        helicopterUnitRef.current,
+        helicopter,
       );
       frame = 0;
     };
@@ -247,18 +254,30 @@ function CampaignStory() {
             <div className="command-grid" />
             <svg className="campaign-routes" viewBox="0 0 1000 560">
               <path className="route route-rail" d="M 80 440 C 190 410 245 380 305 368" />
-              <path className="route route-trade" pathLength="100" d="M 280 375 Q 540 92 790 174" />
-              <path className="route route-fighter" pathLength="100" d="M 840 405 Q 690 230 570 210" />
-              <path className="route route-helicopter" pathLength="100" d="M 480 430 Q 310 310 180 198" />
+              <path ref={tradePathRef} className="route route-trade" pathLength="100" d="M 280 375 Q 540 92 790 174" />
+              <path ref={fighterPathRef} className="route route-fighter" pathLength="100" d="M 840 405 Q 690 230 570 210" />
+              <path ref={helicopterPathRef} className="route route-helicopter" pathLength="100" d="M 480 430 Q 310 310 180 198" />
               <path className="front-line" d="M 94 185 Q 155 238 208 180 T 330 198" />
+              <g ref={tradeUnitRef} className="campaign-svg-unit campaign-svg-unit-trade">
+                <circle className="marker-signal" r="17" />
+                <path className="marker-trail" d="M -36 0 H -13" />
+                <polygon className="marker-body" points="13,0 -10,10 -10,-10" />
+              </g>
+              <g ref={fighterUnitRef} className="campaign-svg-unit campaign-svg-unit-fighter">
+                <circle className="marker-signal" r="18" />
+                <path className="marker-trail" d="M -39 0 H -14" />
+                <polygon className="marker-body" points="14,0 4,12 -11,7 -11,-7 4,-12" />
+              </g>
+              <g ref={helicopterUnitRef} className="campaign-svg-unit campaign-svg-unit-helicopter">
+                <circle className="marker-signal" r="17" />
+                <path className="marker-trail" d="M -42 0 H -13" />
+                <polygon className="marker-body" points="13,0 -10,10 -10,-10" />
+              </g>
             </svg>
             <span className="map-node node-city"><i>▦</i><small>CAPITAL</small></span>
             <span className="map-node node-airport"><i>◆</i><small>AIRPORT</small></span>
             <span className="map-node node-port"><i>●</i><small>PORT</small></span>
             <span className="map-node node-target"><i>×</i><small>HOSTILE</small></span>
-            <span className="campaign-unit moving-trade"><Mark kind="plane" /></span>
-            <span className="campaign-unit moving-fighter"><Mark kind="jet" /></span>
-            <span className="campaign-unit moving-helicopter"><Mark kind="helicopter" /></span>
             <span className="impact-pulse" />
             <div className="campaign-map-label"><span>WORLD / LIVE</span><strong>THEATER 01</strong></div>
           </div>
@@ -593,7 +612,18 @@ export default function WikiApp() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const syncRoute = () => setRoute(parseRoute());
+    const syncRoute = () => {
+      const nextRoute = parseRoute();
+      const viewTransitionDocument = document as ViewTransitionDocument;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (viewTransitionDocument.startViewTransition && !reduceMotion) {
+        viewTransitionDocument.startViewTransition(() => {
+          flushSync(() => setRoute(nextRoute));
+        });
+      } else {
+        setRoute(nextRoute);
+      }
+    };
     syncRoute();
     window.addEventListener('hashchange', syncRoute);
     fetch('/content/index.json')
@@ -608,16 +638,20 @@ export default function WikiApp() {
     window.location.hash = '/all';
   };
 
+  const routeKey = route.kind === 'article' ? `article-${route.slug}` : route.kind;
+
   return (
     <div className="site-root">
       <Header onSearch={search} />
-      {route.kind === 'home' && <Home index={index} />}
-      {route.kind === 'all' && <AllPages index={index} initialQuery={searchQuery} />}
-      {route.kind === 'article' && <Article key={route.slug} index={index} slug={route.slug} section={route.section} />}
-      <footer className="site-footer">
-        <div><strong>SoftDiplomacy Wiki</strong><span>Independent community documentation.</span></div>
-        <div><a href="https://github.com/dfgamer-commits/soft-diplomacy" target="_blank" rel="noreferrer">Game repository</a><a href="https://openfront.wiki/" target="_blank" rel="noreferrer">OpenFront community wiki</a></div>
-      </footer>
+      <div className="route-surface" key={routeKey}>
+        {route.kind === 'home' && <Home index={index} />}
+        {route.kind === 'all' && <AllPages index={index} initialQuery={searchQuery} />}
+        {route.kind === 'article' && <Article index={index} slug={route.slug} section={route.section} />}
+        <footer className="site-footer">
+          <div><strong>SoftDiplomacy Wiki</strong><span>Independent community documentation.</span></div>
+          <div><a href="https://github.com/dfgamer-commits/soft-diplomacy" target="_blank" rel="noreferrer">Game repository</a><a href="https://openfront.wiki/" target="_blank" rel="noreferrer">OpenFront community wiki</a></div>
+        </footer>
+      </div>
     </div>
   );
 }
