@@ -1,6 +1,13 @@
 'use client';
 
-import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
+import {
+  FormEvent,
+  MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -148,6 +155,155 @@ function Shell({
   );
 }
 
+function CampaignStory() {
+  const storyRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const story = storyRef.current;
+    if (!story) return;
+
+    let frame = 0;
+    const clamp = (value: number) => Math.min(1, Math.max(0, value));
+    const curve = (
+      progress: number,
+      start: [number, number],
+      control: [number, number],
+      end: [number, number],
+    ) => {
+      const inverse = 1 - progress;
+      return [
+        inverse * inverse * start[0] +
+          2 * inverse * progress * control[0] +
+          progress * progress * end[0],
+        inverse * inverse * start[1] +
+          2 * inverse * progress * control[1] +
+          progress * progress * end[1],
+      ];
+    };
+    const setMarker = (name: string, point: number[]) => {
+      story.style.setProperty(`--${name}-x`, `${point[0]}%`);
+      story.style.setProperty(`--${name}-y`, `${point[1]}%`);
+    };
+
+    const update = () => {
+      const rect = story.getBoundingClientRect();
+      const travel = Math.max(1, rect.height - window.innerHeight);
+      const progress = clamp(-rect.top / travel);
+      const trade = clamp((progress - 0.12) / 0.26);
+      const fighter = clamp((progress - 0.39) / 0.24);
+      const helicopter = clamp((progress - 0.67) / 0.24);
+
+      story.dataset.phase = String(Math.min(3, Math.floor(progress * 4)));
+      story.style.setProperty('--story-progress', progress.toFixed(4));
+      story.style.setProperty('--map-tilt', `${56 - progress * 14}deg`);
+      story.style.setProperty('--map-turn', `${-13 + progress * 8}deg`);
+      story.style.setProperty('--map-lift', `${8 - progress * 22}px`);
+      story.style.setProperty('--map-scale', (0.92 + progress * 0.08).toFixed(3));
+      story.style.setProperty('--trade-dash', (100 - trade * 100).toFixed(2));
+      story.style.setProperty(
+        '--fighter-dash',
+        (100 - fighter * 100).toFixed(2),
+      );
+      story.style.setProperty(
+        '--helicopter-dash',
+        (100 - helicopter * 100).toFixed(2),
+      );
+      setMarker('trade', curve(trade, [28, 67], [54, 23], [79, 31]));
+      setMarker(
+        'fighter',
+        curve(fighter, [84, 72], [69, 40], [57, 37]),
+      );
+      setMarker(
+        'helicopter',
+        curve(helicopter, [48, 77], [31, 56], [18, 35]),
+      );
+      frame = 0;
+    };
+    const requestUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', requestUpdate, { passive: true });
+    window.addEventListener('resize', requestUpdate);
+    return () => {
+      window.removeEventListener('scroll', requestUpdate);
+      window.removeEventListener('resize', requestUpdate);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <section className="campaign-story" ref={storyRef} data-phase="0">
+      <div className="campaign-stage">
+        <div className="campaign-heading">
+          <p className="eyebrow">One connected front</p>
+          <p>Scroll to run the operation</p>
+        </div>
+        <div className="campaign-scene" aria-hidden="true">
+          <div className="campaign-glow" />
+          <div className="command-map">
+            <div className="command-map-texture" />
+            <div className="command-grid" />
+            <svg className="campaign-routes" viewBox="0 0 1000 560">
+              <path className="route route-rail" d="M 80 440 C 190 410 245 380 305 368" />
+              <path className="route route-trade" pathLength="100" d="M 280 375 Q 540 92 790 174" />
+              <path className="route route-fighter" pathLength="100" d="M 840 405 Q 690 230 570 210" />
+              <path className="route route-helicopter" pathLength="100" d="M 480 430 Q 310 310 180 198" />
+              <path className="front-line" d="M 94 185 Q 155 238 208 180 T 330 198" />
+            </svg>
+            <span className="map-node node-city"><i>▦</i><small>CAPITAL</small></span>
+            <span className="map-node node-airport"><i>◆</i><small>AIRPORT</small></span>
+            <span className="map-node node-port"><i>●</i><small>PORT</small></span>
+            <span className="map-node node-target"><i>×</i><small>HOSTILE</small></span>
+            <span className="campaign-unit moving-trade"><Mark kind="plane" /></span>
+            <span className="campaign-unit moving-fighter"><Mark kind="jet" /></span>
+            <span className="campaign-unit moving-helicopter"><Mark kind="helicopter" /></span>
+            <span className="impact-pulse" />
+            <div className="campaign-map-label"><span>WORLD / LIVE</span><strong>THEATER 01</strong></div>
+          </div>
+          <div className="map-shadow" />
+        </div>
+        <div className="campaign-telemetry" aria-hidden="true">
+          <span>OPENFRONT SYSTEM</span>
+          <span className="telemetry-state telemetry-state-0">SECURE THE TERRITORY</span>
+          <span className="telemetry-state telemetry-state-1">TRADE ROUTE ACTIVE</span>
+          <span className="telemetry-state telemetry-state-2">FIGHTER INTERCEPT</span>
+          <span className="telemetry-state telemetry-state-3">AIRBORNE DEPLOYMENT</span>
+          <span>SD / AIR COMMAND</span>
+        </div>
+      </div>
+
+      <div className="campaign-steps">
+        <article className="campaign-step">
+          <span>01 / TERRITORY</span>
+          <h2>Build on the rules that already work.</h2>
+          <p>OpenFront’s land, economy, rail, port, combat, and diplomacy systems stay authoritative. Air power starts from that same foundation.</p>
+          <a href={articleHref('Base_Mechanics_Parity')}>Review base parity →</a>
+        </article>
+        <article className="campaign-step">
+          <span>02 / CONNECT</span>
+          <h2>Link the airport. Open the route.</h2>
+          <p>Rails connect to airports as they do to ports. Passenger planes then carry trade between airports at 1.2× trade-ship speed.</p>
+          <a href={articleHref('Passenger_Plane')}>Passenger plane →</a>
+        </article>
+        <article className="campaign-step">
+          <span>03 / PROTECT</span>
+          <h2>Control the sky with familiar combat.</h2>
+          <p>Fighter jets inherit the warship model—health, levels, range, targeting, fire rhythm, and capture rules—with the documented air adjustment.</p>
+          <a href={articleHref('Fighter_Jet')}>Fighter jet →</a>
+        </article>
+        <article className="campaign-step">
+          <span>04 / DEPLOY</span>
+          <h2>Move troops beyond the shoreline.</h2>
+          <p>Attack helicopters mirror transport ships from the air, including a readable trail and arrival timing, with a paid launch and two-unit limit.</p>
+          <a href={articleHref('Attack_Helicopter')}>Attack helicopter →</a>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function Home({ index }: { index: PageIndex[] }) {
   return (
     <main>
@@ -180,6 +336,8 @@ function Home({ index }: { index: PageIndex[] }) {
           <div className="radar-unit radar-unit-heli"><Mark kind="helicopter" /><small>SPEC OPS · 2 MAX</small></div>
         </div>
       </section>
+
+      <CampaignStory />
 
       <section className="mission-strip">
         <div><span>01</span><p><strong>Same foundation</strong>Original OpenFront systems remain the baseline.</p></div>
