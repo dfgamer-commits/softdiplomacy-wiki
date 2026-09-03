@@ -261,8 +261,7 @@ button, input { font: inherit; }
 .map-node small { margin-top: 7px; padding: 3px 5px; color: #bdd2da; background: rgba(4, 17, 23, 0.84); font: 700 7px/1 var(--font-display); letter-spacing: 0.13em; }
 .node-city { left: 8%; top: 78%; }
 .node-airport { left: 28%; top: 67%; }
-.node-airport i { color: #031117; border: 0; border-radius: 0; background: var(--cyan); transform: rotate(45deg); }
-.node-airport i::first-letter { transform: rotate(-45deg); }
+.node-airport i { color: #031117; border: 0; border-radius: 0; background: var(--cyan); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
 .node-port { left: 79%; top: 31%; }
 .node-port i { color: var(--cyan); }
 .node-target { left: 57%; top: 37%; }
