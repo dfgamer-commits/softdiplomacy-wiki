@@ -444,6 +444,7 @@ function AllPages({ index, initialQuery = '' }: { index: PageIndex[]; initialQue
 function Article({ index, slug, section }: { index: PageIndex[]; slug: string; section?: string }) {
   const [page, setPage] = useState<WikiPage | null>(null);
   const [error, setError] = useState(false);
+  const articleRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     fetch(`/content/pages/${encodeURIComponent(slug)}.json`)
       .then((response) => {
@@ -467,6 +468,74 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
     [page],
   );
 
+  useEffect(() => {
+    const article = articleRef.current;
+    if (!page || !article) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const revealTargets = Array.from(
+      article.querySelectorAll<HTMLElement>('.wiki-content > *, .article-license'),
+    );
+
+    revealTargets.forEach((target, position) => {
+      target.classList.add('article-reveal');
+      target.style.setProperty('--reveal-order', String(Math.min(position, 8)));
+    });
+
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      revealTargets.forEach((target) => target.classList.add('is-visible'));
+    }
+
+    const revealObserver = reduceMotion || !('IntersectionObserver' in window)
+      ? null
+      : new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('is-visible');
+            revealObserver?.unobserve(entry.target);
+          });
+        }, { rootMargin: '0px 0px -9% 0px', threshold: 0.06 });
+
+    revealTargets.forEach((target) => revealObserver?.observe(target));
+
+    let animationFrame = 0;
+    const updateReadingState = () => {
+      animationFrame = 0;
+      const bounds = article.getBoundingClientRect();
+      const readableDistance = Math.max(article.offsetHeight - window.innerHeight * 0.58, 1);
+      const progress = Math.min(1, Math.max(0, (72 - bounds.top) / readableDistance));
+      article.style.setProperty('--reading-progress', String(progress));
+
+      const headingElements = articleHeadings
+        .map((heading) => document.getElementById(heading.id))
+        .filter((heading): heading is HTMLElement => Boolean(heading));
+      let currentSection = headingElements[0]?.id ?? '';
+      headingElements.forEach((heading) => {
+        if (heading.getBoundingClientRect().top <= 150) currentSection = heading.id;
+      });
+      article.parentElement?.querySelectorAll<HTMLElement>('.toc a[data-section]').forEach((link) => {
+        const isActive = link.dataset.section === currentSection;
+        link.classList.toggle('is-active', isActive);
+        if (isActive) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
+    };
+    const requestReadingUpdate = () => {
+      if (!animationFrame) animationFrame = window.requestAnimationFrame(updateReadingState);
+    };
+
+    updateReadingState();
+    window.addEventListener('scroll', requestReadingUpdate, { passive: true });
+    window.addEventListener('resize', requestReadingUpdate);
+
+    return () => {
+      revealObserver?.disconnect();
+      window.removeEventListener('scroll', requestReadingUpdate);
+      window.removeEventListener('resize', requestReadingUpdate);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [articleHeadings, page]);
+
   const interceptLinks = (event: MouseEvent<HTMLElement>) => {
     const anchor = (event.target as HTMLElement).closest('a');
     if (!anchor) return;
@@ -489,8 +558,9 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
 
   return (
     <Shell index={index}>
-      <main className="content-pane article-layout">
-        <article>
+      <main className={`content-pane article-layout${page.softDiplomacy ? ' article-layout-air' : ''}`}>
+        <article ref={articleRef} className="wiki-article">
+          <div className="article-reading-progress" aria-hidden="true"><span /></div>
           <p className="breadcrumbs"><a href="#/">Home</a><span>/</span><a href="#/all">All pages</a><span>/</span>{page.title}</p>
           <div className="article-title-row">
             <div><p className="eyebrow">{page.softDiplomacy ? 'SoftDiplomacy expansion' : 'OpenFront reference'}</p><h1>{page.title}</h1></div>
@@ -510,7 +580,7 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
           </footer>
         </article>
         {articleHeadings.length > 1 && (
-          <aside className="toc"><p className="eyebrow">On this page</p><ul>{articleHeadings.map((heading) => <li className={heading.level > 1 ? 'toc-sub' : ''} key={heading.id}><a href={articleSectionHref(slug, heading.id)}>{heading.text}</a></li>)}</ul></aside>
+          <aside className="toc"><p className="eyebrow">On this page</p><ul>{articleHeadings.map((heading) => <li className={heading.level > 1 ? 'toc-sub' : ''} key={heading.id}><a data-section={heading.id} href={articleSectionHref(slug, heading.id)}>{heading.text}</a></li>)}</ul></aside>
         )}
       </main>
     </Shell>

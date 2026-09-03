@@ -390,13 +390,82 @@ button, input { font: inherit; }
 .page-link-grid .soft-page { border-color: rgba(183, 239, 94, 0.14); }
 
 .article-layout { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 60px; }
+.wiki-article {
+  --reading-progress: 0;
+  position: relative;
+  min-width: 0;
+  animation: article-arrive 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.article-reading-progress {
+  position: fixed;
+  z-index: 31;
+  top: 71px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.article-reading-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(var(--reading-progress));
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--cyan), var(--blue), var(--lime));
+  box-shadow: 0 0 16px rgba(92, 230, 244, 0.72);
+  transition: transform 0.08s linear;
+}
+.article-layout-air .article-title-row { position: relative; }
+.article-layout-air .article-title-row::after {
+  content: '';
+  position: absolute;
+  right: 66px;
+  bottom: 12px;
+  width: min(34vw, 260px);
+  height: 1px;
+  transform: scaleX(var(--reading-progress));
+  transform-origin: right;
+  background: linear-gradient(90deg, transparent, rgba(92, 230, 244, 0.72));
+}
+.article-layout-air .air-badge { animation: air-badge-signal 3.2s ease-in-out infinite; }
+.wiki-article > .breadcrumbs { animation: article-detail-arrive 0.48s 0.06s both; }
+.wiki-article > .article-title-row { animation: article-detail-arrive 0.56s 0.12s both; }
+.wiki-article > .tag-row,
+.wiki-article > .rule { animation: article-detail-arrive 0.52s 0.2s both; }
+.article-reveal {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  filter: blur(3px);
+  transition:
+    opacity 0.56s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.64s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.5s ease;
+  transition-delay: calc(min(var(--reveal-order, 0), 2) * 35ms);
+}
+.article-reveal.is-visible { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+@keyframes article-arrive {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes article-detail-arrive {
+  from { opacity: 0; transform: translate3d(-12px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes air-badge-signal {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(92, 230, 244, 0)); }
+  50% { filter: drop-shadow(0 0 14px rgba(92, 230, 244, 0.48)); }
+}
 .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
 .tag-row span { padding: 5px 8px; border: 1px solid var(--line); color: #8ba5b1; font-size: 8px; letter-spacing: 0.07em; text-transform: uppercase; }
 .rule { height: 1px; margin: 30px 0; background: linear-gradient(90deg, rgba(92, 230, 244, 0.55), var(--line), transparent); }
 .toc { position: sticky; top: 110px; align-self: start; padding-left: 18px; border-left: 1px solid var(--line); }
 .toc ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.toc a { color: #78929e; font-size: 10px; line-height: 1.35; }
+.toc a { position: relative; display: block; color: #78929e; font-size: 10px; line-height: 1.35; transition: color 0.18s ease, transform 0.18s ease; }
 .toc a:hover { color: var(--cyan); }
+.toc a::before { content: ''; position: absolute; top: 0.18em; bottom: 0.18em; left: -19px; width: 2px; transform: scaleY(0); background: var(--cyan); transition: transform 0.18s ease; }
+.toc a.is-active { color: white; transform: translateX(4px); }
+.toc a.is-active::before { transform: scaleY(1); }
 .toc .toc-sub { padding-left: 10px; }
 .article-license { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--line); color: #67828e; font-size: 9px; line-height: 1.6; }
 .article-license a { color: var(--cyan); }
@@ -492,6 +561,8 @@ button, input { font: inherit; }
   .page-shell { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   .home-content, .content-pane { padding: 44px 20px 60px; }
+  .article-reading-progress { top: 63px; }
+  .article-layout-air .article-title-row::after { display: none; }
   .page-groups section { grid-template-columns: 1fr; }
   .page-link-grid { grid-template-columns: 1fr; }
   .wiki-content .sd-spec-grid { grid-template-columns: 1fr; }
@@ -506,4 +577,12 @@ button, input { font: inherit; }
   .campaign-stage { position: relative; top: auto; height: 640px; }
   .campaign-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 0; background: var(--line); }
   .campaign-step { width: auto; min-height: auto; margin: 0; padding: 54px 4vw; background: #061118; }
+  .wiki-article,
+  .wiki-article > .breadcrumbs,
+  .wiki-article > .article-title-row,
+  .wiki-article > .tag-row,
+  .wiki-article > .rule,
+  .article-layout-air .air-badge { animation: none !important; }
+  .article-reveal { opacity: 1; transform: none; filter: none; transition: none; }
+  .article-reading-progress span { transition: none; }
 }
