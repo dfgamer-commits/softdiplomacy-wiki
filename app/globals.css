@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './category-story.css';
 
 :root {
   --ink: #ecf8ff;

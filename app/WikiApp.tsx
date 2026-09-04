@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import AirFleetStory from './AirFleetStory';
+import CategoryStory, { CategoryAtlas } from './CategoryStory';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -399,6 +400,7 @@ function Home({ index }: { index: PageIndex[] }) {
       <Shell index={index}>
         <div className="home-content">
           <AirFleetStory />
+          <CategoryAtlas />
 
           <section className="parity-panel home-scroll-reveal">
             <div><p className="eyebrow">Design rule</p><h2>Additive, not disruptive.</h2></div>
@@ -651,6 +653,7 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
           </div>
           {page.cats?.length > 0 && <div className="tag-row">{page.cats.filter((cat) => !/stub|broken|all pages/i.test(cat)).slice(0, 6).map((cat) => <span key={cat}>{cat}</span>)}</div>}
           <div className="rule" />
+          <CategoryStory slug={slug} />
           <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
           {slug === 'Air_Units' && <AirTopicDeck />}
           <footer className="article-license">

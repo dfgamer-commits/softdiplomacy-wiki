@@ -1,0 +1,274 @@
+'use client';
+
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  CATEGORY_MOTION_QUERY, CATEGORY_STEP_STOPS, CATEGORY_TOPICS,
+  categoryScrollProgress, categorySegment, categoryState,
+} from './categoryMotion';
+import type { CategoryTopic } from './categoryMotion';
+
+type Point = { x: number; y: number };
+
+function Route({ d, progress, air = false, rail = false, trail = true }: { d: string; progress: number; air?: boolean; rail?: boolean; trail?: boolean }) {
+  const pathRef = useRef<SVGPathElement>(null);
+  const unitRef = useRef<SVGGElement>(null);
+  useLayoutEffect(() => {
+    const path = pathRef.current;
+    const unit = unitRef.current;
+    if (!path || !unit) return;
+    const length = path.getTotalLength();
+    const distance = length * progress;
+    const point = path.getPointAtLength(distance);
+    const from = path.getPointAtLength(Math.max(0, distance - 1));
+    const to = path.getPointAtLength(Math.min(length, distance + 1));
+    unit.setAttribute('transform', `translate(${point.x} ${point.y}) rotate(${Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI})`);
+  }, [d, progress]);
+  return <>
+    <path className="category-route-base" d={d} />
+    <path ref={pathRef} className="category-route-live" d={d} pathLength="100" strokeDasharray="100" strokeDashoffset={100 - progress * 100} opacity={trail ? 1 : 0} />
+    <g ref={unitRef} transform="translate(110 180)">
+      {rail ? <><rect x="-38" y="-9" width="23" height="18" rx="3" /><rect x="-10" y="-9" width="23" height="18" rx="3" /><rect x="18" y="-9" width="28" height="18" rx="3" /></> : <Unit air={air} />}
+    </g>
+  </>;
+}
+
+function Unit({ air = false, fighter = false }: { air?: boolean; fighter?: boolean }) {
+  return <g className="category-unit">
+    <circle className="category-unit-halo" r={fighter ? 26 : 20} />
+    {air ? <polygon points={fighter ? '18,0 6,17 -15,10 -15,-10 6,-17' : '17,0 -12,11 -12,-11'} /> : <><circle r={fighter ? 17 : 10} /><circle className="category-unit-inner" r={fighter ? 10 : 4} /></>}
+    {fighter && air && <polygon className="category-unit-inner" points="10,0 3,9 -8,5 -8,-5 3,-9" />}
+  </g>;
+}
+
+function Station({ x, y, label, airport = false, progress = 1 }: { x: number; y: number; label: string; airport?: boolean; progress?: number }) {
+  return <g transform={`translate(${x} ${y})`} className="category-station">
+    <circle r="35" strokeDasharray="3 6" />
+    <g opacity={0.25 + progress * 0.75} transform={`scale(${0.75 + progress * 0.25})`}>
+      {airport ? <polygon points="0,-24 24,0 0,24 -24,0" /> : <rect x="-21" y="-21" width="42" height="42" rx="5" />}
+      <path d={airport ? 'M -11 0 H 11 M 0 -11 V 11' : 'M -9 11 V -7 M 0 11 V -12 M 9 11 V -4'} />
+    </g>
+    <text y="64" textAnchor="middle">{label}</text>
+  </g>;
+}
+
+function Trooper({ x, y, opacity = 1 }: { x: number; y: number; opacity?: number }) {
+  return <g transform={`translate(${x} ${y})`} opacity={opacity} className="category-trooper">
+    <circle cy="-10" r="4" /><path d="M 0 -6 V 7 M -7 -1 L 0 -4 L 7 -1 M 0 7 L -6 16 M 0 7 L 6 16" />
+  </g>;
+}
+
+function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: number }) {
+  const state = categoryState(progress);
+  const id = useId().replace(/:/g, '');
+  const air = Boolean(topic.air);
+  const route = 'M 110 180 C 250 180 230 85 385 85 S 560 180 690 180';
+  const landingRoute = air ? 'M 110 180 C 290 180 380 85 580 85' : 'M 110 180 C 260 180 305 110 440 110 S 510 205 580 205';
+  const railRoute = 'M 110 180 L 270 180 Q 305 180 305 145 V 120 Q 305 85 340 85 H 470 Q 505 85 505 120 V 145 Q 505 180 540 180 H 690';
+  const fighterX = 110 + 340 * state.prepare;
+  const endpoint = air ? 'Airport' : 'Port';
+  const isWater = !air && ['trade', 'landing', 'intercept'].includes(topic.scene);
+  return <svg className={`category-diagram${isWater ? ' category-water' : ''}`} viewBox="0 0 800 310" aria-hidden="true">
+    <defs>
+      <pattern id={`${id}-grid`} width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 H 0 V 40" fill="none" stroke="currentColor" strokeOpacity=".1" /></pattern>
+    </defs>
+    <rect width="800" height="310" fill={`url(#${id}-grid)`} />
+    <g className="category-coordinate-labels"><text x="22" y="27">{air ? 'AIR OPERATIONS' : isWater ? 'NAVAL OPERATIONS' : 'GROUND SYSTEMS'}</text><text x="778" y="27" textAnchor="end">ILLUSTRATIVE / NOT TO SCALE</text></g>
+
+    {topic.scene === 'trade' && <>
+      <Station x={110} y={180} label={`Your ${endpoint.toLowerCase()}`} airport={air} />
+      <Station x={690} y={180} label={`Partner ${endpoint.toLowerCase()}`} airport={air} />
+      <g opacity={1 - state.outcome} className="category-cyan"><Route d={route} progress={state.action} air={air} /></g>
+      {[110, 690].map((x) => <g key={x} className="category-gold" opacity={state.outcome} transform={`translate(${x} ${115 - state.outcome * 14})`}><circle r="28" /><text textAnchor="middle" y="6">+G</text></g>)}
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.arrival ? 'ARRIVED → TRADE PAYMENT' : 'NO ARRIVAL, NO TRADE PAYMENT'}</text>
+    </>}
+
+    {topic.scene === 'intercept' && <>
+      <Station x={110} y={180} label={endpoint} airport={air} />
+      <path className="category-route-base" d="M 110 180 H 450" />
+      <circle className="category-range" cx="450" cy="180" r="180" opacity={state.prepare} />
+      <g transform={`translate(${fighterX} 180)`} className={state.engaging ? 'category-hostile' : 'category-cyan'}><Unit air={air} fighter /></g>
+      <g transform="translate(620 180) rotate(180)" className="category-hostile" opacity={state.targetVisible ? 1 : 0}><Unit air={air} /></g>
+      <g className="category-projectile" opacity={state.shotVisible ? 1 : 0} transform={`translate(${474 + 130 * state.shot} 180)`}>
+        <path d="M -47 0 H -8" /><polygon points="16,0 6,-4 -7,-4 -7,4 6,4" />
+      </g>
+      <circle className="category-impact" cx="620" cy="180" r={10 + state.impact * 45} opacity={progress >= 0.70 ? 1 - state.impact : 0} />
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.phase === 2 ? 'TARGET CLEARED · PATROL RESUMES' : 'SHELL FIRE · NO COLLISION REQUIRED'}</text>
+    </>}
+
+    {topic.scene === 'landing' && <>
+      <path className="category-land" d="M 555 310 V 235 L 600 190 L 620 65 H 800 V 310 Z" />
+      <Station x={110} y={180} label={air ? 'Airport' : 'Owned coast'} airport={air} />
+      <path className="category-route-base" d={landingRoute} />
+      <g className="category-amber" opacity={1 - categorySegment(progress, 0.94, 0.98)}><Route d={landingRoute} progress={state.action} air={air} /></g>
+      <g className="category-amber">
+        {air && <path className="category-rope" d={`M 580 101 V ${101 + 119 * state.rope}`} opacity={1 - state.groundAdvance} />}
+        {state.descent.map((descent, index) => <Trooper key={index} x={580 + index * 18 * descent + state.groundAdvance * 48} y={air ? 117 + descent * 103 : 220} opacity={air ? (descent > 0 ? 1 : 0) : descent} />)}
+        <path className="category-ground-arrow" d={`M 622 242 H ${622 + state.groundAdvance * 75}`} opacity={state.groundAdvance} />
+      </g>
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.groundAdvance > 0 ? 'PAYLOAD DELIVERED → GROUND ATTACK' : 'TROOPS REMAIN IN TRANSIT UNTIL ARRIVAL'}</text>
+    </>}
+
+    {topic.scene === 'rail' && <>
+      <path className="category-rail-bed" d={railRoute} pathLength="100" strokeDasharray="100" strokeDashoffset={100 - state.prepare * 100} />
+      <path className="category-rail-ties" d={railRoute} opacity={state.prepare} />
+      <Station x={110} y={180} label="Factory" />
+      <Station x={690} y={180} label={air ? 'Airport station' : 'Port station'} airport={air} />
+      <g className="category-cyan" opacity={state.prepare}><Route d={railRoute} progress={state.action} rail trail={false} /></g>
+      <g className="category-gold" opacity={state.outcome}><text x="690" y="110" textAnchor="middle">{air ? '80% OF PORT PAYOUT' : 'STATION REACHED'}</text></g>
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.prepare < 1 ? 'CONNECT ELIGIBLE STATIONS' : 'TRAIN POSITION FOLLOWS THE TRACK'}</text>
+    </>}
+
+    {topic.scene === 'territory' && <>
+      {Array.from({ length: 7 }, (_, column) => Array.from({ length: 3 }, (_, row) => {
+        const captured = column < 3 || (column < 3 + Math.floor(state.action * 3) && row !== 2);
+        return <rect key={`${column}-${row}`} className={captured ? 'category-owned-tile' : 'category-enemy-tile'} x={180 + column * 63} y={80 + row * 58} width="59" height="54" rx="3" />;
+      }))}
+      <g className="category-cyan">{[0, 1, 2].map((i) => <Trooper key={i} x={250 + state.action * 240} y={102 + i * 28} opacity={state.prepare} />)}</g>
+      <g className="category-meter"><text x="65" y="87">RESERVE</text><rect x="65" y="105" width="16" height="115" /><rect x="65" y={105 + state.prepare * 42} width="16" height={115 - state.prepare * 42} className="category-meter-fill" /></g>
+      <path className="category-ground-arrow" d={`M 350 252 H ${350 + state.action * 190}`} />
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">COMMITTED TROOPS LEAVE YOUR RESERVE · DEFENSE STILL MATTERS</text>
+    </>}
+
+    {topic.scene === 'construction' && <>
+      <g transform="translate(390 161)">
+        <rect className="category-owned-tile" x="-115" y="-85" width="230" height="160" rx="5" />
+        <rect className="category-build-outline" x="-70" y="-57" width="140" height="111" strokeDasharray="7 8" opacity={1 - state.action} />
+        <g className="category-building" transform={`translate(0 ${54 * (1 - state.action)}) scale(1 ${Math.max(0.01, state.action)})`} opacity={state.action}>
+          <rect x="-57" y="-18" width="37" height="72" /><rect x="-16" y="-55" width="38" height="109" /><rect x="27" y="-1" width="35" height="55" />
+          {[-37, 3, 44].map((x) => <path key={x} d={`M ${x} 7 V 15 M ${x} 27 V 35`} />)}
+        </g>
+        <circle className="category-range" r={94 + 29 * state.outcome} opacity={state.outcome} />
+      </g>
+      <text className="category-diagram-note" x="390" y="55" textAnchor="middle">{state.action === 1 ? 'CITY ONLINE' : 'VALID OWNED LAND'}</text>
+      <g className="category-meter" opacity={state.outcome}><text x="580" y="130">CAPACITY</text><rect x="580" y="151" width="130" height="16" /><rect className="category-meter-fill" x="580" y="151" width={50 + 80 * state.outcome} height="16" /></g>
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">CONSTRUCTION → MAXIMUM POPULATION CAPACITY</text>
+    </>}
+
+    {topic.scene === 'economy' && <>
+      <path className="category-route-base" d="M 100 145 H 670 M 230 230 Q 260 145 380 145" />
+      <Station x={100} y={145} label="Base income" />
+      <g className="category-gold" transform="translate(385 145)"><circle r="51" /><circle r={27 + state.prepare * 6 + state.action * 9 - state.outcome * 15} /><text y="7" textAnchor="middle">G</text><text y="79" textAnchor="middle">Gold reserve</text></g>
+      <g className="category-gold" opacity={state.prepare < 1 ? 1 : 0} transform={`translate(${140 + state.prepare * 195} 145)`}><circle r="10" /></g>
+      <g className="category-cyan" opacity={1 - state.action} transform={`translate(${220 + state.action * 115} ${230 - state.action * 85})`}><Unit /></g>
+      <g className="category-gold" opacity={state.action} transform={`translate(${430 + state.outcome * 240} 145)`}><circle r="10" /></g>
+      <Station x={690} y={145} label="Construction" progress={state.outcome} />
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">BASE INCOME + COMPLETED TRADES − PURCHASES</text>
+    </>}
+
+    {topic.scene === 'network' && <>
+      <Station x={110} y={155} label="Active airport" airport />
+      {[state.prepare, state.action, state.outcome].map((value, index) => {
+        const y = 78 + index * 77;
+        const start: Point = { x: 150, y: 155 };
+        const end: Point = { x: 610, y };
+        const x = start.x + (end.x - start.x) * value;
+        const unitY = start.y + (end.y - start.y) * value;
+        return <g key={index} className={index === 2 ? 'category-amber' : 'category-cyan'}>
+          <path className="category-route-base" d={`M ${start.x} ${start.y} L ${end.x} ${end.y}`} />
+          <g transform={`translate(${x} ${unitY}) rotate(${Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI})`} opacity={value > 0 ? 1 : 0}><Unit air fighter={index === 1} /></g>
+          <text x="655" y={y + 5}>{['TRADE', 'PATROL', 'INSERTION'][index]}</text>
+        </g>;
+      })}
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">NAVAL ROLES EXTENDED INTO THE AIR</text>
+    </>}
+  </svg>;
+}
+
+export default function CategoryStory({ slug, linkToArticle = false }: { slug: string; linkToArticle?: boolean }) {
+  const topic = CATEGORY_TOPICS.find((item) => item.slug === slug);
+  return topic ? <TopicSequence key={slug} topic={topic} linkToArticle={linkToArticle} /> : null;
+}
+
+function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToArticle: boolean }) {
+  const rootRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const manualRef = useRef(1);
+  const refreshRef = useRef<() => void>(() => {});
+  const [progress, setProgress] = useState(1);
+  const id = useId();
+  const state = categoryState(progress);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const stage = stageRef.current;
+    if (!root || !stage) return;
+    const media = window.matchMedia(CATEGORY_MOTION_QUERY);
+    let frame = 0;
+    let disposed = false;
+    const update = () => {
+      frame = 0;
+      const pinned = root.classList.contains('category-scroll-enabled');
+      const next = pinned ? categoryScrollProgress(root.getBoundingClientRect().top, root.offsetHeight, stage.offsetHeight, 88) : manualRef.current;
+      setProgress((previous) => Math.abs(next - previous) < 0.0005 ? previous : next);
+    };
+    const requestUpdate = () => { if (!frame) frame = window.requestAnimationFrame(update); };
+    refreshRef.current = requestUpdate;
+    const configure = () => {
+      if (disposed) return;
+      root.classList.toggle('category-scroll-enabled', media.matches);
+      // Zoomed text and small viewports must always leave all controls reachable.
+      if (stage.offsetHeight > window.innerHeight - 110) root.classList.remove('category-scroll-enabled');
+      requestUpdate();
+    };
+    const observer = new ResizeObserver(configure);
+    observer.observe(stage);
+    configure();
+    void document.fonts.ready.then(configure);
+    media.addEventListener('change', configure);
+    window.addEventListener('resize', configure);
+    window.addEventListener('scroll', requestUpdate, { passive: true });
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      media.removeEventListener('change', configure);
+      window.removeEventListener('resize', configure);
+      window.removeEventListener('scroll', requestUpdate);
+      window.cancelAnimationFrame(frame);
+      refreshRef.current = () => {};
+    };
+  }, []);
+
+  const goToStep = (step: number) => {
+    const root = rootRef.current;
+    const stage = stageRef.current;
+    if (!root || !stage) return;
+    manualRef.current = CATEGORY_STEP_STOPS[step];
+    if (root.classList.contains('category-scroll-enabled')) {
+      window.scrollTo({ top: window.scrollY + root.getBoundingClientRect().top - 88 + manualRef.current * (root.offsetHeight - stage.offsetHeight), behavior: 'smooth' });
+    } else refreshRef.current();
+  };
+
+  return <>
+    <section className="category-story" ref={rootRef} aria-labelledby={id}>
+      <div className="category-stage" ref={stageRef}>
+        <div className="category-story-heading"><p className="eyebrow">{topic.label} / in motion</p><button type="button" className="category-skip" onClick={() => {
+          endRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+          endRef.current?.focus({ preventScroll: true });
+        }}>Skip animation ↓</button></div>
+        <h2 id={id}>{topic.title}</h2>
+        <CategoryDiagram topic={topic} progress={progress} />
+        <ol className="category-steps" aria-label={`${topic.label} sequence`}>
+          {topic.steps.map((step, index) => <li key={step} data-state={index === state.phase ? 'current' : index < state.phase ? 'complete' : 'next'}><button type="button" onClick={() => goToStep(index)} aria-current={index === state.phase ? 'step' : undefined}><span>0{index + 1}</span>{step}</button></li>)}
+        </ol>
+        <p className="category-caption">{topic.captions[state.phase]}</p>
+        <div className="category-timeline" aria-hidden="true"><span style={{ transform: `scaleX(${progress})` }} /></div>
+        <div className="category-story-footer"><span className="category-scroll-hint">Scroll to follow the sequence</span><span className="category-static-hint">Use the steps to explore</span>{linkToArticle ? <a href={`#/article/${topic.slug}`}>Read {topic.label.toLowerCase()} →</a> : <span>Illustration, not a gameplay simulation</span>}</div>
+      </div>
+    </section>
+    <div className="category-story-end" ref={endRef} tabIndex={-1} aria-label="End of animated sequence" />
+  </>;
+}
+
+export function CategoryAtlas() {
+  const [slug, setSlug] = useState('Combat');
+  return <section className="category-atlas" aria-labelledby="category-atlas-title">
+    <p className="eyebrow">The interactive field manual</p>
+    <h2 id="category-atlas-title">Every system has a story.</h2>
+    <p className="category-atlas-intro">Choose a topic, then scroll through what happens—and why. Each main article has its own animated sequence too.</p>
+    <div className="category-atlas-choices" role="group" aria-label="Choose an animated topic">
+      {CATEGORY_TOPICS.map((topic) => <button type="button" key={topic.slug} aria-pressed={slug === topic.slug} onClick={() => setSlug(topic.slug)}>{topic.label}</button>)}
+    </div>
+    <CategoryStory slug={slug} linkToArticle />
+  </section>;
+}
