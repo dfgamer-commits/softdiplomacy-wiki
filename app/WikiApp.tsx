@@ -138,23 +138,25 @@ function Shell({
   return (
     <div className="page-shell">
       <aside className="sidebar">
-        <p className="eyebrow">Base game</p>
-        <ul>
-          {PRIMARY_LINKS.map(([label, slug]) => (
-            <li key={slug}><a href={articleHref(slug)}>{label}</a></li>
-          ))}
-        </ul>
-        <p className="eyebrow sidebar-air">Air expansion</p>
-        <ul>
-          {AIR_SLUGS.map((slug) => {
-            const page = index.find((item) => item.slug === slug);
-            return <li key={slug}><a href={articleHref(slug)}>{page?.title ?? slug.replaceAll('_', ' ')}</a></li>;
-          })}
-        </ul>
-        <div className="sync-card">
-          <span className="live-dot" />
-          <p><strong>48-hour sync</strong><br />OpenFront source and wiki monitored.</p>
-        </div>
+        <nav className="sidebar-topics" aria-label="Wiki topics" tabIndex={0}>
+          <p className="eyebrow">Base game</p>
+          <ul>
+            {PRIMARY_LINKS.map(([label, slug]) => (
+              <li key={slug}><a href={articleHref(slug)}>{label}</a></li>
+            ))}
+          </ul>
+          <p className="eyebrow sidebar-air">Air expansion</p>
+          <ul>
+            {AIR_SLUGS.map((slug) => {
+              const page = index.find((item) => item.slug === slug);
+              return <li key={slug}><a href={articleHref(slug)}>{page?.title ?? slug.replaceAll('_', ' ')}</a></li>;
+            })}
+          </ul>
+          <div className="sync-card">
+            <span className="live-dot" />
+            <p><strong>48-hour sync</strong><br />OpenFront source and wiki monitored.</p>
+          </div>
+        </nav>
       </aside>
       {children}
     </div>
