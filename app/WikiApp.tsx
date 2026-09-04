@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import { flushSync } from 'react-dom';
+import AirFleetStory from './AirFleetStory';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -395,34 +396,7 @@ function Home({ index }: { index: PageIndex[] }) {
 
       <Shell index={index}>
         <div className="home-content">
-          <section className="section-heading home-scroll-reveal">
-            <p className="eyebrow">Air command</p>
-            <h2>Three silhouettes. Familiar rules.</h2>
-            <p>SoftDiplomacy extends the game with air equivalents of proven naval units instead of replacing the original economy or combat loop.</p>
-          </section>
-          <div className="unit-grid">
-            <a className="unit-card home-scroll-reveal" href={articleHref('Passenger_Plane')}>
-              <div className="card-mark"><Mark kind="plane" /></div>
-              <span className="card-number">A–01</span>
-              <h3>Passenger plane</h3>
-              <p>The air twin of a trade ship: triangle marker, airport-to-airport routes, faster travel, and a global cap of 800.</p>
-              <div className="stat-row"><span>Role <strong>Trade</strong></span><span>Speed <strong>1.2×</strong></span></div>
-            </a>
-            <a className="unit-card unit-card-featured home-scroll-reveal" href={articleHref('Fighter_Jet')}>
-              <div className="card-mark"><Mark kind="jet" /></div>
-              <span className="card-number">A–02</span>
-              <h3>Fighter jet</h3>
-              <p>The air twin of a warship: pentagon marker, matching range, health, levels, fire rhythm, targeting, and capture behavior.</p>
-              <div className="stat-row"><span>Role <strong>Combat</strong></span><span>Speed <strong>1.2×</strong></span></div>
-            </a>
-            <a className="unit-card home-scroll-reveal" href={articleHref('Attack_Helicopter')}>
-              <div className="card-mark"><Mark kind="helicopter" /></div>
-              <span className="card-number">A–03</span>
-              <h3>Attack helicopter</h3>
-              <p>The air twin of a transport ship: triangular marker, visible route trail and ETA, paid launch, troop delivery, and two active per player.</p>
-              <div className="stat-row"><span>Role <strong>Insertion</strong></span><span>Limit <strong>2</strong></span></div>
-            </a>
-          </div>
+          <AirFleetStory />
 
           <section className="parity-panel home-scroll-reveal">
             <div><p className="eyebrow">Design rule</p><h2>Additive, not disruptive.</h2></div>
