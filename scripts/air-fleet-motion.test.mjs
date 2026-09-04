@@ -65,6 +65,28 @@ test('troops only appear after landing and consuming the helicopter', () => {
   assert.equal(fleetMission(2, 1).troopsOpacity, 1);
 });
 
+test('rope deploys under the stopped helicopter before three staggered descents', () => {
+  assert.equal(fleetMission(2, 0.5).ropeLength, 0);
+  const rope = fleetMission(2, 0.66);
+  assert.equal(rope.flight, 1);
+  assert.ok(rope.ropeLength > 0 && rope.ropeLength < 1);
+  assert.ok(rope.rappellers.every((trooper) => trooper.opacity === 0));
+  const descending = fleetMission(2, 0.8);
+  assert.equal(descending.ropeLength, 1);
+  assert.equal(descending.aircraftOpacity, 1);
+  assert.ok(descending.rappellers[0].descent > descending.rappellers[1].descent);
+  assert.ok(descending.rappellers[1].descent > descending.rappellers[2].descent);
+  assert.ok(fleetMission(2, 0.92).rappellers.every((trooper) => trooper.descent === 1));
+  assert.equal(fleetMission(2, 1).ropeOpacity, 0);
+});
+
+test('muzzle flash occurs only when the jet fires, never in patrol or after impact', () => {
+  assert.equal(fleetMission(1, 0.4).muzzleOpacity, 0);
+  assert.ok(fleetMission(1, 0.53).muzzleOpacity > 0);
+  assert.equal(fleetMission(1, 0.53).projectileOpacity, 1);
+  assert.equal(fleetMission(1, 0.8).muzzleOpacity, 0);
+});
+
 test('all outcome states are bounded and obey causality across the whole scroll', () => {
   for (let index = 0; index < 3; index++) {
     const forward = [];
@@ -78,6 +100,13 @@ test('all outcome states are bounded and obey causality across the whole scroll'
       if (state.troopsOpacity > 0) assert.equal(state.aircraftOpacity, 0);
       if (state.projectileOpacity > 0) assert.equal(state.flight, 1);
       if (index === 1 && state.targetOpacity < 1) assert.equal(state.projectile, 1);
+      state.rappellers.forEach((trooper) => {
+        assert.ok(trooper.descent >= 0 && trooper.descent <= 1);
+        if (trooper.opacity > 0 && trooper.descent < 1) {
+          assert.equal(state.ropeLength, 1);
+          assert.equal(state.aircraftOpacity, 1);
+        }
+      });
     }
     for (let i = 1000; i >= 0; i--) assert.deepEqual(fleetMission(index, i / 1000), forward[i]);
   }

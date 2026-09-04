@@ -464,11 +464,19 @@ button, input { font: inherit; }
 .fleet-enemy-course { stroke: #ff7c68; stroke-dasharray: 5 7; opacity: 0.45; }
 .fleet-enemy-label { fill: #ffb1a5; }
 .fleet-enemy { fill: #ff7c68; stroke: #ffb1a5; stroke-width: 1.5; }
-.fleet-shell { fill: #fff2ce; filter: drop-shadow(0 0 7px var(--amber)); opacity: 0; }
+.fleet-shell { filter: drop-shadow(0 0 7px var(--amber)); opacity: 0; }
+.fleet-projectile-body { fill: #fff2ce; stroke: white; stroke-width: 0.7; }
+.fleet-projectile-fin { fill: #c7dce3; }
+.fleet-projectile-plume { fill: var(--amber); }
+.fleet-shot-trail { stroke: var(--amber); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--amber)); opacity: 0; }
+.fleet-muzzle-flash { stroke: #fff2ce; stroke-width: 2; stroke-linecap: round; opacity: 0; }
 .fleet-impact { fill: none; stroke: var(--amber); stroke-width: 3; opacity: 0; }
 .fleet-landing-tile { stroke: #ff7c68; stroke-dasharray: 5 5; stroke-width: 2; fill: #ff7c68; fill-opacity: 0.06; }
 .fleet-landing-cross { stroke: var(--amber); stroke-width: 2; opacity: calc(1 - var(--arrival)); }
-.fleet-landed-troops { fill: var(--amber); stroke: #fff2d6; opacity: 0; }
+.fleet-deployment-rope { stroke: #e2d7ad; stroke-width: 2; stroke-linecap: round; opacity: 0; }
+.fleet-rappeller { fill: var(--amber); stroke: #ffe0a0; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.fleet-rappeller path { fill: none; }
+.fleet-ground-advance { stroke: var(--amber); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
 .fleet-end { scroll-margin-top: 100px; outline: none; }
 .fleet-chapter a:focus-visible, .fleet-controls button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 

@@ -22,7 +22,7 @@ const aircraft = [
     slug: 'Attack_Helicopter', name: 'Attack helicopter', role: 'Insertion', kind: 'helicopter',
     description: 'The air twin of a transport ship: triangular marker, visible route trail and ETA, paid launch, troop delivery, and two active per player.',
     stats: [['Naval twin', 'Transport ship'], ['Speed', '1.2×'], ['Player limit', '2']],
-    route: 'M 130 230 C 340 230 425 125 635 130 S 855 220 1070 220',
+    route: 'M 130 230 C 340 230 425 125 635 130 S 855 110 1070 110',
     points: '17,0 -12,12 -12,-12',
   },
 ];
@@ -59,11 +59,16 @@ export default function AirFleetStory() {
     const lanes = Array.from(story.querySelectorAll<SVGGElement>('.fleet-lane'));
     const missionTitle = story.querySelector<HTMLElement>('.fleet-mission-title');
     const missionCaption = story.querySelector<HTMLElement>('.fleet-mission-caption');
+    const missionNote = story.querySelector<HTMLElement>('.fleet-mission-note');
     const milestones = Array.from(story.querySelectorAll<HTMLElement>('.fleet-milestones li'));
     const enemy = story.querySelector<SVGGElement>('.fleet-enemy');
-    const shell = story.querySelector<SVGCircleElement>('.fleet-shell');
+    const shell = story.querySelector<SVGGElement>('.fleet-shell');
+    const shotTrail = story.querySelector<SVGPathElement>('.fleet-shot-trail');
+    const muzzleFlash = story.querySelector<SVGGElement>('.fleet-muzzle-flash');
     const impactRing = story.querySelector<SVGCircleElement>('.fleet-impact');
-    const troops = story.querySelector<SVGGElement>('.fleet-landed-troops');
+    const rope = story.querySelector<SVGPathElement>('.fleet-deployment-rope');
+    const rappellers = Array.from(story.querySelectorAll<SVGGElement>('.fleet-rappeller'));
+    const groundAdvance = story.querySelector<SVGPathElement>('.fleet-ground-advance');
     const lengths = paths.map((path) => path.getTotalLength());
     let frame = 0;
     let disposed = false;
@@ -86,6 +91,7 @@ export default function AirFleetStory() {
       const activeMission = FLEET_MISSIONS[motion.active];
       const activeState = fleetMission(motion.active, enabled ? motion.flights[motion.active] : 1);
       if (missionTitle) missionTitle.textContent = activeMission.title;
+      if (missionNote) missionNote.textContent = activeMission.note;
       if (missionCaption) missionCaption.textContent = activeMission.captions[activeState.phase];
       milestones.forEach((step, index) => {
         step.textContent = activeMission.steps[index];
@@ -112,14 +118,26 @@ export default function AirFleetStory() {
         if (index === 1) {
           enemy?.setAttribute('transform', `translate(${1080 - state.enemyFlight * 210} 170)`);
           enemy?.style.setProperty('opacity', String(state.targetOpacity));
-          shell?.setAttribute('cx', String(740 + 130 * state.projectile));
+          // Start outside the jet's nose; the projectile tip meets the target.
+          const shotX = 762 + 93 * state.projectile;
+          shell?.setAttribute('transform', `translate(${shotX} 170)`);
           shell?.style.setProperty('opacity', String(state.projectileOpacity));
+          shotTrail?.setAttribute('d', `M ${Math.max(762, shotX - 65)} 170 H ${shotX - 7}`);
+          shotTrail?.style.setProperty('opacity', String(state.projectileOpacity * 0.8));
+          muzzleFlash?.style.setProperty('opacity', String(state.muzzleOpacity));
           impactRing?.setAttribute('r', String(12 + state.impact * 48));
           impactRing?.style.setProperty('opacity', String(state.impactOpacity));
         }
         if (index === 2) {
-          troops?.style.setProperty('opacity', String(state.troopsOpacity));
-          troops?.setAttribute('transform', `translate(${1070 + state.troopsOpacity * 18} 220)`);
+          rope?.setAttribute('d', `M 1070 125 V ${125 + 130 * state.ropeLength}`);
+          rope?.style.setProperty('opacity', String(state.ropeOpacity));
+          rappellers.forEach((trooper, i) => {
+            const { descent, opacity } = state.rappellers[i];
+            const spread = Math.min(1, Math.max(0, (descent - 0.95) / 0.05));
+            trooper.setAttribute('transform', `translate(${1070 + (i - 1) * 18 * spread + state.troopsOpacity * 30} ${140 + descent * 105})`);
+            trooper.style.setProperty('opacity', String(opacity));
+          });
+          groundAdvance?.style.setProperty('opacity', String(state.troopsOpacity));
         }
       });
     };
@@ -187,7 +205,7 @@ export default function AirFleetStory() {
           </header>
 
           <div className="fleet-mission">
-            <div className="fleet-mission-label"><strong className="fleet-mission-title">{FLEET_MISSIONS[0].title}</strong><span>Illustrative sequence · not to scale</span></div>
+            <div className="fleet-mission-label"><strong className="fleet-mission-title">{FLEET_MISSIONS[0].title}</strong><span className="fleet-mission-note">{FLEET_MISSIONS[0].note}</span></div>
             <div className="fleet-scene" aria-hidden="true">
               <div className="fleet-map-texture" />
               <svg className="fleet-routes" viewBox="0 0 1200 350" fill="none">
@@ -208,19 +226,28 @@ export default function AirFleetStory() {
                     <g className="fleet-enemy" transform="translate(1080 170)">
                       <path d="M 24 0 H 62" /><polygon points="-17,0 12,12 12,-12" />
                     </g>
-                    <circle className="fleet-shell" cx="740" cy="170" r="5" />
+                    <path className="fleet-shot-trail" d="M 762 170 H 762" />
+                    <g className="fleet-muzzle-flash" transform="translate(762 170)"><path d="M -7 0 H 15 M 0 -10 V 10 M -5 -7 8 7 M -5 7 8 -7" /></g>
+                    <g className="fleet-shell" transform="translate(762 170)">
+                      <path className="fleet-projectile-plume" d="M -8 -3 -30 0 -8 3" />
+                      <path className="fleet-projectile-fin" d="M -5 -3 -12 -8 -9 0 -12 8 -5 3" />
+                      <path className="fleet-projectile-body" d="M -8 -3 H 7 L 15 0 7 3 H -8 Z" />
+                    </g>
                     <circle className="fleet-impact" cx="870" cy="170" r="12" />
                     <text className="fleet-diagram-label" x="650" y="330" textAnchor="middle">STOP AT RANGE · SHOOT, DON’T COLLIDE</text>
                   </>}
                   {unit.kind === 'helicopter' && <>
                     <AirportNode x={130} y={230} label="Launch airport" />
-                    <rect className="fleet-landing-tile" x="1025" y="175" width="90" height="90" rx="3" />
-                    <path className="fleet-landing-cross" d="M 1055 220 H 1085 M 1070 205 V 235" />
-                    <text className="fleet-diagram-label" x="1070" y="295" textAnchor="middle">Landing tile</text>
+                    <rect className="fleet-landing-tile" x="1025" y="210" width="90" height="90" rx="3" />
+                    <path className="fleet-landing-cross" d="M 1055 255 H 1085 M 1070 240 V 270" />
+                    <text className="fleet-diagram-label" x="1070" y="330" textAnchor="middle">Landing tile</text>
                     <text className="fleet-diagram-label" x="600" y="58" textAnchor="middle">COMMITTED TROOPS · ONE-WAY INSERTION</text>
-                    <g className="fleet-landed-troops" transform="translate(1070 220)">
-                      <rect x="-16" y="-12" width="10" height="10" /><rect x="1" y="-4" width="10" height="10" /><rect x="-16" y="10" width="10" height="10" />
-                    </g>
+                    <path className="fleet-deployment-rope" d="M 1070 125 V 125" />
+                    {[0, 1, 2].map((trooper) => <g key={trooper} className="fleet-rappeller" transform="translate(1070 140)">
+                      <circle cx="0" cy="-9" r="4" />
+                      <path d="M 0 -3 V 6 M -6 -6 -4 0 0 2 5 -2 5 -6 M 0 6 -5 14 M 0 6 5 14" />
+                    </g>)}
+                    <path className="fleet-ground-advance" d="M 1124 255 H 1162 M 1153 247 1162 255 1153 263" />
                   </>}
                   <path className="fleet-route-guide" d={unit.route} />
                   <path className="fleet-route-progress" d={unit.route} pathLength="100" />
