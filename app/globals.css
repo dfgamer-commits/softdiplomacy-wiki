@@ -338,10 +338,14 @@ button, input { font: inherit; }
   letter-spacing: 0.14em;
 }
 .telemetry-state { display: none; color: var(--cyan); }
+.telemetry-state b, .telemetry-state i, .telemetry-state em { font-style: normal; line-height: 1.3; }
+.telemetry-state b { color: var(--cyan); font-size: 10px; }
+.telemetry-state i { color: #afc6cf; font-size: 12px; font-weight: 500; letter-spacing: .04em; }
+.telemetry-state em { color: var(--lime); font-size: 12px; font-weight: 500; letter-spacing: .04em; }
 .campaign-story[data-phase='0'] .telemetry-state-0,
 .campaign-story[data-phase='1'] .telemetry-state-1,
 .campaign-story[data-phase='2'] .telemetry-state-2,
-.campaign-story[data-phase='3'] .telemetry-state-3 { display: inline; }
+.campaign-story[data-phase='3'] .telemetry-state-3 { display: flex; flex: 1; justify-content: center; gap: clamp(10px, 2vw, 30px); }
 .campaign-steps { position: relative; z-index: 7; margin-top: calc(-100vh + 72px); pointer-events: none; }
 .campaign-step {
   display: flex;
@@ -457,11 +461,15 @@ button, input { font: inherit; }
 .fleet-scroll-enabled .fleet-skip, .fleet-scroll-enabled .fleet-progress { display: block; }
 .fleet-scroll-enabled .fleet-scroll-hint { display: inline; }
 .fleet-scroll-enabled .fleet-static-hint { display: none; }
-.fleet-mission { display: grid; grid-template-rows: auto minmax(120px, 1fr) auto auto; gap: 8px; min-height: 0; }
+.fleet-mission { display: grid; grid-template-rows: auto minmax(120px, 1fr) auto auto auto; gap: 8px; min-height: 0; }
 .fleet-mission-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; align-items: baseline; }
 .fleet-mission-title { color: var(--ink); font-size: 14px; font-weight: 650; }
 .fleet-mission-label > span { color: #809da9; font-size: 12px; }
 .fleet-mission-caption { margin: 0; min-height: 2.8em; color: #b1c8d3; font-size: 14px; line-height: 1.4; }
+.fleet-doctrine { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.fleet-doctrine p { display: grid; gap: 4px; margin: 0; padding: 9px 12px; background: rgba(6,17,24,.92); }
+.fleet-doctrine span { color: #688895; font: 10px ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
+.fleet-doctrine strong { color: #c3d9e2; font-size: 14px; line-height: 1.35; }
 .fleet-milestones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; counter-reset: mission-step; margin: 0; padding: 0; list-style: none; }
 .fleet-milestones li { counter-increment: mission-step; padding-top: 7px; border-top: 2px solid var(--line); color: #819ba8; font-size: 12px; }
 .fleet-milestones li::before { content: '0' counter(mission-step) ' '; color: #6a8999; }
@@ -525,6 +533,7 @@ button, input { font: inherit; }
   .fleet-direction > :nth-child(2) { display: none; }
   .fleet-scene { height: 190px; }
   .fleet-milestones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fleet-doctrine { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fleet-map-texture, .fleet-track { transform: none !important; }
@@ -894,6 +903,7 @@ button, input { font: inherit; }
   .campaign-telemetry { right: 20px; bottom: 22px; left: 20px; }
   .campaign-telemetry > span:first-child,
   .campaign-telemetry > span:last-child { display: none; }
+  .telemetry-state i, .telemetry-state em { display: none; }
   .campaign-steps { display: grid; gap: 1px; margin-top: 0; background: var(--line); }
   .campaign-step { width: 100%; min-height: auto; margin: 0; padding: 62px 23px; background: #061118; }
   .campaign-step h2 { max-width: 560px; font-size: 38px; }

@@ -8,6 +8,8 @@ const aircraft = [
     slug: 'Passenger_Plane', name: 'Passenger plane', role: 'Trade', kind: 'trade',
     description: 'The air twin of a trade ship: triangle marker, airport-to-airport routes, faster travel, and a global cap of 800.',
     stats: [['Naval twin', 'Trade ship'], ['Speed', '1.2×'], ['Global cap', '800']],
+    doctrine: ['Required first', 'Two eligible active airports and a trade relationship'],
+    consequence: ['Value appears when', 'The plane arrives; an uninterrupted flight pays both owners'],
     route: 'M 130 230 C 350 230 370 100 600 100 S 850 230 1070 230',
     points: '17,0 -12,12 -12,-12',
   },
@@ -15,6 +17,8 @@ const aircraft = [
     slug: 'Fighter_Jet', name: 'Fighter jet', role: 'Combat', kind: 'fighter',
     description: 'The air twin of a warship: pentagon marker, matching range, health, levels, fire rhythm, targeting, and capture behavior.',
     stats: [['Naval twin', 'Warship'], ['Speed', '1.2×'], ['Role', 'Combat']],
+    doctrine: ['Required first', 'An active owned airport and a valid hostile aircraft'],
+    consequence: ['Control means', 'Holding range, firing a shell, then returning to patrol or repair'],
     route: 'M 130 230 C 330 230 500 170 740 170',
     points: '17,0 5,15 -14,9 -14,-9 5,-15',
   },
@@ -22,6 +26,8 @@ const aircraft = [
     slug: 'Attack_Helicopter', name: 'Attack helicopter', role: 'Insertion', kind: 'helicopter',
     description: 'The air twin of a transport ship: triangular marker, visible route trail and ETA, paid launch, troop delivery, and two active per player.',
     stats: [['Naval twin', 'Transport ship'], ['Speed', '1.2×'], ['Player limit', '2']],
+    doctrine: ['Committed first', 'Launch cost, real troops, an active airport, and a valid tile'],
+    consequence: ['Mission ends when', 'Troops transfer to land combat and the carrier is consumed'],
     route: 'M 130 230 C 340 230 425 125 635 130 S 855 110 1070 110',
     points: '17,0 -12,12 -12,-12',
   },
@@ -60,6 +66,10 @@ export default function AirFleetStory() {
     const missionTitle = story.querySelector<HTMLElement>('.fleet-mission-title');
     const missionCaption = story.querySelector<HTMLElement>('.fleet-mission-caption');
     const missionNote = story.querySelector<HTMLElement>('.fleet-mission-note');
+    const doctrineLabel = story.querySelector<HTMLElement>('.fleet-doctrine-label');
+    const doctrineValue = story.querySelector<HTMLElement>('.fleet-doctrine-value');
+    const consequenceLabel = story.querySelector<HTMLElement>('.fleet-consequence-label');
+    const consequenceValue = story.querySelector<HTMLElement>('.fleet-consequence-value');
     const milestones = Array.from(story.querySelectorAll<HTMLElement>('.fleet-milestones li'));
     const enemy = story.querySelector<SVGGElement>('.fleet-enemy');
     const shell = story.querySelector<SVGGElement>('.fleet-shell');
@@ -93,6 +103,10 @@ export default function AirFleetStory() {
       if (missionTitle) missionTitle.textContent = activeMission.title;
       if (missionNote) missionNote.textContent = activeMission.note;
       if (missionCaption) missionCaption.textContent = activeMission.captions[activeState.phase];
+      if (doctrineLabel) doctrineLabel.textContent = aircraft[motion.active].doctrine[0];
+      if (doctrineValue) doctrineValue.textContent = aircraft[motion.active].doctrine[1];
+      if (consequenceLabel) consequenceLabel.textContent = aircraft[motion.active].consequence[0];
+      if (consequenceValue) consequenceValue.textContent = aircraft[motion.active].consequence[1];
       milestones.forEach((step, index) => {
         step.textContent = activeMission.steps[index];
         step.dataset.state = index < activeState.phase ? 'complete' : index === activeState.phase ? 'current' : 'next';
@@ -263,6 +277,10 @@ export default function AirFleetStory() {
             </div>
             <ol className="fleet-milestones" aria-label="Mission sequence">{FLEET_MISSIONS[0].steps.map((step, index) => <li key={index} data-state={index === 0 ? 'current' : 'next'}>{step}</li>)}</ol>
             <p className="fleet-mission-caption">{FLEET_MISSIONS[0].captions[0]}</p>
+            <aside className="fleet-doctrine">
+              <p><span className="fleet-doctrine-label">{aircraft[0].doctrine[0]}</span><strong className="fleet-doctrine-value">{aircraft[0].doctrine[1]}</strong></p>
+              <p><span className="fleet-consequence-label">{aircraft[0].consequence[0]}</span><strong className="fleet-consequence-value">{aircraft[0].consequence[1]}</strong></p>
+            </aside>
           </div>
 
           <div className="fleet-viewport" ref={viewportRef}>

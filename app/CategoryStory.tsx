@@ -64,7 +64,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
   const route = 'M 110 180 C 250 180 230 85 385 85 S 560 180 690 180';
   const landingRoute = air ? 'M 110 180 C 290 180 380 85 580 85' : 'M 110 180 C 260 180 305 110 440 110 S 510 205 580 205';
   const railRoute = 'M 110 180 L 270 180 Q 305 180 305 145 V 120 Q 305 85 340 85 H 470 Q 505 85 505 120 V 145 Q 505 180 540 180 H 690';
-  const fighterX = 110 + 340 * state.prepare;
+  const fighterX = 110 + 340 * state.action;
   const endpoint = air ? 'Airport' : 'Port';
   const isWater = !air && ['trade', 'landing', 'intercept'].includes(topic.scene);
   return <svg className={`category-diagram${isWater ? ' category-water' : ''}`} viewBox="0 0 800 310" aria-hidden="true">
@@ -77,6 +77,8 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
     {topic.scene === 'trade' && <>
       <Station x={110} y={180} label={`Your ${endpoint.toLowerCase()}`} airport={air} />
       <Station x={690} y={180} label={`Partner ${endpoint.toLowerCase()}`} airport={air} />
+      <g className="category-validation" opacity={state.prepare} transform="translate(400 48)"><rect x="-82" y="-16" width="164" height="32" rx="16" /><text y="5" textAnchor="middle">TRADE RELATION ✓</text></g>
+      <g className="category-route-risk" opacity={state.interaction * (1 - state.outcome)}><circle cx="420" cy="80" r={18 + state.interaction * 12} /><text x="420" y="85" textAnchor="middle">!</text></g>
       <g opacity={1 - state.outcome} className="category-cyan"><Route d={route} progress={state.action} air={air} /></g>
       {[110, 690].map((x) => <g key={x} className="category-gold" opacity={state.outcome} transform={`translate(${x} ${115 - state.outcome * 14})`}><circle r="28" /><text textAnchor="middle" y="6">+G</text></g>)}
       <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.arrival ? 'ARRIVED → TRADE PAYMENT' : 'NO ARRIVAL, NO TRADE PAYMENT'}</text>
@@ -85,21 +87,24 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
     {topic.scene === 'intercept' && <>
       <Station x={110} y={180} label={endpoint} airport={air} />
       <path className="category-route-base" d="M 110 180 H 450" />
-      <circle className="category-range" cx="450" cy="180" r="180" opacity={state.prepare} />
+      <circle className="category-range" cx="450" cy="180" r="180" opacity={state.action} />
       <g transform={`translate(${fighterX} 180)`} className={state.engaging ? 'category-hostile' : 'category-cyan'}><Unit air={air} fighter /></g>
-      <g transform="translate(620 180) rotate(180)" className="category-hostile" opacity={state.targetVisible ? 1 : 0}><Unit air={air} /></g>
+      <g transform="translate(620 180) rotate(180)" className="category-hostile" opacity={state.targetVisible ? 0.18 + state.interaction * 0.82 : 0}><Unit air={air} /></g>
+      <g className="category-target-lock" opacity={state.interaction * (state.targetVisible ? 1 : 0)} transform="translate(620 180)"><path d="M -35 -21 V -35 H -21 M 21 -35 H 35 V -21 M 35 21 V 35 H 21 M -21 35 H -35 V 21" /></g>
       <g className="category-projectile" opacity={state.shotVisible ? 1 : 0} transform={`translate(${474 + 130 * state.shot} 180)`}>
         <path d="M -47 0 H -8" /><polygon points="16,0 6,-4 -7,-4 -7,4 6,4" />
       </g>
-      <circle className="category-impact" cx="620" cy="180" r={10 + state.impact * 45} opacity={progress >= 0.70 ? 1 - state.impact : 0} />
-      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.phase === 2 ? 'TARGET CLEARED · PATROL RESUMES' : 'SHELL FIRE · NO COLLISION REQUIRED'}</text>
+      <circle className="category-impact" cx="620" cy="180" r={10 + state.impact * 45} opacity={progress >= 0.73 ? 1 - state.impact : 0} />
+      <g className="category-reload" transform={`translate(${fighterX} 180)`} opacity={state.engaging ? 1 : 0}><circle r="32" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - state.interaction * 100} /></g>
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.phase === 3 ? 'THREAT CLEARED · RETURN TO THE ORDER' : 'DETECT → HOLD RANGE → FIRE A SHELL'}</text>
     </>}
 
     {topic.scene === 'landing' && <>
       <path className="category-land" d="M 555 310 V 235 L 600 190 L 620 65 H 800 V 310 Z" />
       <Station x={110} y={180} label={air ? 'Airport' : 'Owned coast'} airport={air} />
       <path className="category-route-base" d={landingRoute} />
-      <g className="category-amber" opacity={1 - categorySegment(progress, 0.94, 0.98)}><Route d={landingRoute} progress={state.action} air={air} /></g>
+      <g className="category-payload" opacity={state.prepare * (1 - state.outcome)}>{[0, 1, 2].map((i) => <circle key={i} cx={74 + i * 15} cy="115" r="5" />)}<text x="96" y="95" textAnchor="middle">PAYLOAD</text></g>
+      <g className="category-amber" opacity={1 - categorySegment(progress, 0.88, 0.98)}><Route d={landingRoute} progress={state.action} air={air} /></g>
       <g className="category-amber">
         {air && <path className="category-rope" d={`M 580 101 V ${101 + 119 * state.rope}`} opacity={1 - state.groundAdvance} />}
         {state.descent.map((descent, index) => <Trooper key={index} x={580 + index * 18 * descent + state.groundAdvance * 48} y={air ? 117 + descent * 103 : 220} opacity={air ? (descent > 0 ? 1 : 0) : descent} />)}
@@ -114,32 +119,35 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
       <Station x={110} y={180} label="Factory" />
       <Station x={690} y={180} label={air ? 'Airport station' : 'Port station'} airport={air} />
       <g className="category-cyan" opacity={state.prepare}><Route d={railRoute} progress={state.action} rail trail={false} /></g>
+      <g className="category-arrival-check" opacity={state.interaction}><circle cx="690" cy="180" r={39 + state.interaction * 13} /><text x="690" y="125" textAnchor="middle">STATION VALID ✓</text></g>
       <g className="category-gold" opacity={state.outcome}><text x="690" y="110" textAnchor="middle">{air ? '80% OF PORT PAYOUT' : 'STATION REACHED'}</text></g>
       <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.prepare < 1 ? 'CONNECT ELIGIBLE STATIONS' : 'TRAIN POSITION FOLLOWS THE TRACK'}</text>
     </>}
 
     {topic.scene === 'territory' && <>
       {Array.from({ length: 7 }, (_, column) => Array.from({ length: 3 }, (_, row) => {
-        const captured = column < 3 || (column < 3 + Math.floor(state.action * 3) && row !== 2);
+        const captured = column < 3 || (column < 3 + Math.floor(state.outcome * 3) && row !== 2);
         return <rect key={`${column}-${row}`} className={captured ? 'category-owned-tile' : 'category-enemy-tile'} x={180 + column * 63} y={80 + row * 58} width="59" height="54" rx="3" />;
       }))}
-      <g className="category-cyan">{[0, 1, 2].map((i) => <Trooper key={i} x={250 + state.action * 240} y={102 + i * 28} opacity={state.prepare} />)}</g>
-      <g className="category-meter"><text x="65" y="87">RESERVE</text><rect x="65" y="105" width="16" height="115" /><rect x="65" y={105 + state.prepare * 42} width="16" height={115 - state.prepare * 42} className="category-meter-fill" /></g>
-      <path className="category-ground-arrow" d={`M 350 252 H ${350 + state.action * 190}`} />
+      <g className="category-cyan">{[0, 1, 2].map((i) => <Trooper key={i} x={250 + state.interaction * 240} y={102 + i * 28} opacity={state.action} />)}</g>
+      <g className="category-hostile" opacity={state.interaction * (1 - state.outcome)}><path className="category-defense" d="M 540 104 V 164 Q 540 202 575 219 Q 610 202 610 164 V 104 Q 575 86 540 104 Z" /><text x="575" y="150" textAnchor="middle">DEF</text><text x="575" y="178" textAnchor="middle">TERRAIN</text></g>
+      <g className="category-meter"><text x="65" y="87">RESERVE</text><rect x="65" y="105" width="16" height="115" /><rect x="65" y={105 + state.action * 42} width="16" height={115 - state.action * 42} className="category-meter-fill" /></g>
+      <path className="category-ground-arrow" d={`M 350 252 H ${350 + state.interaction * 190}`} />
       <text className="category-diagram-note" x="400" y="285" textAnchor="middle">COMMITTED TROOPS LEAVE YOUR RESERVE · DEFENSE STILL MATTERS</text>
     </>}
 
     {topic.scene === 'construction' && <>
       <g transform="translate(390 161)">
         <rect className="category-owned-tile" x="-115" y="-85" width="230" height="160" rx="5" />
-        <rect className="category-build-outline" x="-70" y="-57" width="140" height="111" strokeDasharray="7 8" opacity={1 - state.action} />
-        <g className="category-building" transform={`translate(0 ${54 * (1 - state.action)}) scale(1 ${Math.max(0.01, state.action)})`} opacity={state.action}>
+        <rect className="category-build-outline" x="-70" y="-57" width="140" height="111" strokeDasharray="7 8" opacity={1 - state.interaction} />
+        <g className="category-building" transform={`translate(0 ${54 * (1 - state.interaction)}) scale(1 ${Math.max(0.01, state.interaction)})`} opacity={state.interaction}>
           <rect x="-57" y="-18" width="37" height="72" /><rect x="-16" y="-55" width="38" height="109" /><rect x="27" y="-1" width="35" height="55" />
           {[-37, 3, 44].map((x) => <path key={x} d={`M ${x} 7 V 15 M ${x} 27 V 35`} />)}
         </g>
         <circle className="category-range" r={94 + 29 * state.outcome} opacity={state.outcome} />
       </g>
-      <text className="category-diagram-note" x="390" y="55" textAnchor="middle">{state.action === 1 ? 'CITY ONLINE' : 'VALID OWNED LAND'}</text>
+      <g className="category-validation" opacity={state.prepare} transform="translate(390 48)"><rect x="-78" y="-16" width="156" height="32" rx="16" /><text y="5" textAnchor="middle">OWNED LAND ✓</text></g>
+      <g className="category-gold category-cost" opacity={state.action * (1 - state.interaction)} transform="translate(230 155)"><circle r="23" /><text y="5" textAnchor="middle">−G</text></g>
       <g className="category-meter" opacity={state.outcome}><text x="580" y="130">CAPACITY</text><rect x="580" y="151" width="130" height="16" /><rect className="category-meter-fill" x="580" y="151" width={50 + 80 * state.outcome} height="16" /></g>
       <text className="category-diagram-note" x="400" y="285" textAnchor="middle">CONSTRUCTION → MAXIMUM POPULATION CAPACITY</text>
     </>}
@@ -150,16 +158,19 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
       <g className="category-gold" transform="translate(385 145)"><circle r="51" /><circle r={27 + state.prepare * 6 + state.action * 9 - state.outcome * 15} /><text y="7" textAnchor="middle">G</text><text y="79" textAnchor="middle">Gold reserve</text></g>
       <g className="category-gold" opacity={state.prepare < 1 ? 1 : 0} transform={`translate(${140 + state.prepare * 195} 145)`}><circle r="10" /></g>
       <g className="category-cyan" opacity={1 - state.action} transform={`translate(${220 + state.action * 115} ${230 - state.action * 85})`}><Unit /></g>
-      <g className="category-gold" opacity={state.action} transform={`translate(${430 + state.outcome * 240} 145)`}><circle r="10" /></g>
+      <g className="category-purchase-quote" opacity={state.interaction}><path d="M 455 98 H 595 V 132 H 455 Z" /><text x="525" y="120" textAnchor="middle">PURCHASE VALID ✓</text></g>
+      <g className="category-gold" opacity={state.outcome} transform={`translate(${430 + state.outcome * 240} 145)`}><circle r="10" /></g>
       <Station x={690} y={145} label="Construction" progress={state.outcome} />
       <text className="category-diagram-note" x="400" y="285" textAnchor="middle">BASE INCOME + COMPLETED TRADES − PURCHASES</text>
     </>}
 
     {topic.scene === 'network' && <>
-      <Station x={110} y={155} label="Active airport" airport />
-      {[state.prepare, state.action, state.outcome].map((value, index) => {
+      <g opacity={state.prepare} className="category-water-twins">{[0, 1, 2].map((index) => <g key={index} transform={`translate(55 ${78 + index * 77})`}><Unit fighter={index === 1} /><text x="30" y="5">{['TRADE SHIP', 'WARSHIP', 'TRANSPORT'][index]}</text></g>)}</g>
+      <Station x={235} y={155} label="Air support" airport progress={state.action} />
+      {[0, 1, 2].map((index) => {
+        const value = categorySegment(progress, 0.57 + index * 0.04, 0.67 + index * 0.04);
         const y = 78 + index * 77;
-        const start: Point = { x: 150, y: 155 };
+        const start: Point = { x: 275, y: 155 };
         const end: Point = { x: 610, y };
         const x = start.x + (end.x - start.x) * value;
         const unitY = start.y + (end.y - start.y) * value;
@@ -169,7 +180,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
           <text x="655" y={y + 5}>{['TRADE', 'PATROL', 'INSERTION'][index]}</text>
         </g>;
       })}
-      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">NAVAL ROLES EXTENDED INTO THE AIR</text>
+      <g className="category-validation" opacity={state.outcome} transform="translate(400 278)"><rect x="-142" y="-17" width="284" height="34" rx="17" /><text y="5" textAnchor="middle">BASE SYSTEMS UNCHANGED ✓</text></g>
     </>}
   </svg>;
 }
@@ -252,6 +263,10 @@ function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToA
           {topic.steps.map((step, index) => <li key={step} data-state={index === state.phase ? 'current' : index < state.phase ? 'complete' : 'next'}><button type="button" onClick={() => goToStep(index)} aria-current={index === state.phase ? 'step' : undefined}><span>0{index + 1}</span>{step}</button></li>)}
         </ol>
         <p className="category-caption">{topic.captions[state.phase]}</p>
+        <div className="category-intelligence">
+          <div><span>{topic.readouts[state.phase][0]}</span><strong>{topic.readouts[state.phase][1]}</strong></div>
+          <p><span>Why it matters</span>{topic.principle}</p>
+        </div>
         <div className="category-timeline" aria-hidden="true"><span style={{ transform: `scaleX(${progress})` }} /></div>
         <div className="category-story-footer"><span className="category-scroll-hint">Scroll to follow the sequence</span><span className="category-static-hint">Use the steps to explore</span>{linkToArticle ? <a href={`#/article/${topic.slug}`}>Read {topic.label.toLowerCase()} →</a> : <span>Illustration, not a gameplay simulation</span>}</div>
       </div>

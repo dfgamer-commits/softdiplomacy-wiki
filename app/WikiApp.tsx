@@ -289,10 +289,10 @@ function CampaignStory() {
         </div>
         <div className="campaign-telemetry" aria-hidden="true">
           <span>OPENFRONT SYSTEM</span>
-          <span className="telemetry-state telemetry-state-0">SECURE THE TERRITORY</span>
-          <span className="telemetry-state telemetry-state-1">TRADE ROUTE ACTIVE</span>
-          <span className="telemetry-state telemetry-state-2">FIGHTER INTERCEPT</span>
-          <span className="telemetry-state telemetry-state-3">AIRBORNE DEPLOYMENT</span>
+          <span className="telemetry-state telemetry-state-0"><b>FOUNDATION</b><i>Condition: original systems stay authoritative</i><em>Result: air power adds choices without replacing the base loop</em></span>
+          <span className="telemetry-state telemetry-state-1"><b>AIR TRADE</b><i>Condition: eligible active airports</i><em>Result: gold is paid only after arrival</em></span>
+          <span className="telemetry-state telemetry-state-2"><b>INTERCEPT</b><i>Condition: a valid hostile aircraft enters range</i><em>Result: fire a shell, confirm the hit, resume patrol</em></span>
+          <span className="telemetry-state telemetry-state-3"><b>INSERTION</b><i>Condition: paid launch and real troop payload</i><em>Result: carrier is consumed; land combat begins</em></span>
           <span>SD / AIR COMMAND</span>
         </div>
       </div>
