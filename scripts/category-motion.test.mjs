@@ -93,7 +93,10 @@ test('integration leaves original HTML intact and adds both home and article seq
   assert.ok(wiki.includes('<CategoryStory slug={slug} />'));
   assert.ok(wiki.includes('dangerouslySetInnerHTML={{ __html: page.html }}'));
   const component = readFileSync(new URL('../app/CategoryStory.tsx', import.meta.url), 'utf8');
-  assert.ok(component.includes('getPointAtLength(distance)'));
+  assert.ok(component.includes('getPointAtLength(bounded)'));
+  assert.ok(component.includes('trainCarRefs.current[index]'));
+  assert.ok(component.includes('nose - offset'));
+  assert.ok(component.includes('category-train-coupler'));
   assert.ok(component.includes('media.addEventListener'));
   assert.ok(component.includes('media.removeEventListener'));
   assert.ok(component.includes('observer.disconnect()'));
@@ -107,4 +110,7 @@ test('integration leaves original HTML intact and adds both home and article seq
   assert.ok(fleet.includes('Mission ends when'));
   assert.ok(wiki.includes('Condition: original systems stay authoritative'));
   assert.ok(wiki.includes('Result: gold is paid only after arrival'));
+  assert.ok(wiki.includes('campaign-target-lock'));
+  assert.ok(wiki.includes('fighterShellRef'));
+  assert.ok(wiki.includes('helicopterTroopRefs'));
 });

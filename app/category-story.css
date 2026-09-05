@@ -45,6 +45,21 @@
 .category-ground-arrow { stroke: var(--amber); fill: none; stroke-width: 3; stroke-dasharray: 5 5; }
 .category-rail-bed { fill: none; stroke: #53727e; stroke-width: 14; }
 .category-rail-ties { fill: none; stroke: #95aeb8; stroke-width: 20; stroke-dasharray: 2 13; }
+.category-rail-center { fill: none; stroke: #10232b; stroke-width: 3; stroke-dasharray: 1 4; }
+.category-platforms { fill: #1b3944; stroke: #6b929f; stroke-width: 1; }
+.category-rail-signal { fill: none; stroke: #7898a5; stroke-width: 2; stroke-linecap: round; }
+.category-rail-signal circle { fill: #10232b; stroke: #7898a5; }
+.category-rail-signal circle:last-child { fill: var(--amber); stroke: none; transition: fill .18s ease, filter .18s ease; }
+.category-rail-signal circle:last-child.is-clear { fill: var(--lime); filter: drop-shadow(0 0 6px var(--lime)); }
+.category-train { color: var(--cyan); }
+.category-train-coupler { stroke: #c2e6ee; stroke-width: 3; stroke-linecap: round; }
+.category-train-car { filter: drop-shadow(0 0 6px rgba(92,230,244,.55)); }
+.category-train-body { fill: #6edfee; stroke: #d8fbff; stroke-width: 1.4; }
+.category-train-engine .category-train-body { fill: #9debf3; }
+.category-train-roof { fill: none; stroke: #e9fdff; stroke-width: 2; stroke-linecap: round; }
+.category-train-window { fill: #0b2330; stroke: none; }
+.category-train-wheel { fill: #071219; stroke: #a9d6df; stroke-width: 1; }
+.category-train-nose { fill: var(--amber); stroke: #fff2ce; stroke-width: 1; }
 .category-owned-tile { fill: #174652; stroke: #398193; stroke-width: 1.5; }
 .category-enemy-tile { fill: #412d32; stroke: #76414b; stroke-width: 1.5; }
 .category-meter { fill: #0b1b23; stroke: #53727e; stroke-width: 1; }

@@ -175,6 +175,9 @@ function CampaignStory() {
   const tradeUnitRef = useRef<SVGGElement>(null);
   const fighterUnitRef = useRef<SVGGElement>(null);
   const helicopterUnitRef = useRef<SVGGElement>(null);
+  const fighterShellRef = useRef<SVGGElement>(null);
+  const helicopterRopeRef = useRef<SVGPathElement>(null);
+  const helicopterTroopRefs = useRef<Array<SVGGElement | null>>([]);
 
   useEffect(() => {
     const story = storyRef.current;
@@ -208,6 +211,11 @@ function CampaignStory() {
       const trade = clamp((progress - 0.12) / 0.26);
       const fighter = clamp((progress - 0.39) / 0.24);
       const helicopter = clamp((progress - 0.67) / 0.24);
+      const tradeArrival = clamp((trade - 0.88) / 0.12);
+      const fighterLock = clamp((fighter - 0.5) / 0.16);
+      const fighterShot = clamp((fighter - 0.7) / 0.2);
+      const fighterImpact = clamp((fighter - 0.9) / 0.1);
+      const helicopterDeploy = clamp((helicopter - 0.72) / 0.28);
 
       story.dataset.phase = String(Math.min(3, Math.floor(progress * 4)));
       story.style.setProperty('--story-progress', progress.toFixed(4));
@@ -224,6 +232,11 @@ function CampaignStory() {
         '--helicopter-dash',
         (100 - helicopter * 100).toFixed(2),
       );
+      story.style.setProperty('--trade-arrival', tradeArrival.toFixed(3));
+      story.style.setProperty('--fighter-lock', (fighterLock * (1 - fighterImpact)).toFixed(3));
+      story.style.setProperty('--fighter-impact', fighterImpact.toFixed(3));
+      story.style.setProperty('--fighter-impact-ring', Math.sin(fighterImpact * Math.PI).toFixed(3));
+      story.style.setProperty('--helicopter-deploy', helicopterDeploy.toFixed(3));
       moveUnit(tradePathRef.current, tradeUnitRef.current, trade);
       moveUnit(fighterPathRef.current, fighterUnitRef.current, fighter);
       moveUnit(
@@ -231,6 +244,16 @@ function CampaignStory() {
         helicopterUnitRef.current,
         helicopter,
       );
+      const shellX = 690 - fighterShot * 120;
+      const shellY = 270 - fighterShot * 60;
+      fighterShellRef.current?.setAttribute('transform', `translate(${shellX.toFixed(2)} ${shellY.toFixed(2)}) rotate(-153.4)`);
+      fighterShellRef.current?.style.setProperty('opacity', fighter > 0.7 && fighterImpact < 1 ? '1' : '0');
+      helicopterRopeRef.current?.setAttribute('d', `M 180 210 V ${(210 + helicopterDeploy * 70).toFixed(2)}`);
+      helicopterTroopRefs.current.forEach((troop, index) => {
+        const descent = clamp((helicopterDeploy - index * 0.16) / 0.55);
+        troop?.setAttribute('transform', `translate(${180 + (index - 1) * 13 * descent} ${220 + descent * 58})`);
+        troop?.style.setProperty('opacity', descent > 0 ? '1' : '0');
+      });
       frame = 0;
     };
     const requestUpdate = () => {
@@ -262,7 +285,7 @@ function CampaignStory() {
             <svg className="campaign-routes" viewBox="0 0 1000 560">
               <path className="route route-rail" d="M 80 440 C 190 410 245 380 305 368" />
               <path ref={tradePathRef} className="route route-trade" pathLength="100" d="M 280 375 Q 540 92 790 174" />
-              <path ref={fighterPathRef} className="route route-fighter" pathLength="100" d="M 840 405 Q 690 230 570 210" />
+              <path ref={fighterPathRef} className="route route-fighter" pathLength="100" d="M 840 405 Q 760 315 690 270" />
               <path ref={helicopterPathRef} className="route route-helicopter" pathLength="100" d="M 480 430 Q 310 310 180 198" />
               <path className="front-line" d="M 94 185 Q 155 238 208 180 T 330 198" />
               <g ref={tradeUnitRef} className="campaign-svg-unit campaign-svg-unit-trade">
@@ -274,12 +297,19 @@ function CampaignStory() {
                 <circle className="marker-signal" r="18" />
                 <path className="marker-trail" d="M -39 0 H -14" />
                 <polygon className="marker-body" points="14,0 4,12 -11,7 -11,-7 4,-12" />
+                <polygon className="marker-core" points="8,0 2,7 -6,4 -6,-4 2,-7" />
               </g>
               <g ref={helicopterUnitRef} className="campaign-svg-unit campaign-svg-unit-helicopter">
                 <circle className="marker-signal" r="17" />
                 <path className="marker-trail" d="M -42 0 H -13" />
                 <polygon className="marker-body" points="13,0 -10,10 -10,-10" />
               </g>
+              <g className="campaign-trade-arrival" transform="translate(790 174)"><circle r="25" /><circle r="34" /><text y="-42" textAnchor="middle">+ GOLD</text></g>
+              <g className="campaign-target-lock" transform="translate(570 210)"><path d="M -28 -16 V -28 H -16 M 16 -28 H 28 V -16 M 28 16 V 28 H 16 M -16 28 H -28 V 16" /><circle r="20" /></g>
+              <g ref={fighterShellRef} className="campaign-fighter-shell" transform="translate(690 270) rotate(-153.4)"><path d="M -24 0 H -7" /><polygon points="10,0 2,-4 -7,-3 -7,3 2,4" /></g>
+              <circle className="campaign-fighter-impact" cx="570" cy="210" r="34" />
+              <path ref={helicopterRopeRef} className="campaign-deployment-rope" d="M 180 210 V 210" />
+              {[0, 1, 2].map((troop) => <g key={troop} ref={(node) => { helicopterTroopRefs.current[troop] = node; }} className="campaign-deployed-troop" transform="translate(180 220)"><circle cy="-5" r="3" /><path d="M 0 -2 V 7 M -5 1 H 5 M 0 7 L -5 14 M 0 7 L 5 14" /></g>)}
             </svg>
             <span className="map-node node-city"><i>▦</i><small>CAPITAL</small></span>
             <span className="map-node node-airport"><i>◆</i><small>AIRPORT</small></span>

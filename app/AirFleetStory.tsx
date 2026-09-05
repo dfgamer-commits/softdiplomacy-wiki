@@ -76,9 +76,15 @@ export default function AirFleetStory() {
     const shotTrail = story.querySelector<SVGPathElement>('.fleet-shot-trail');
     const muzzleFlash = story.querySelector<SVGGElement>('.fleet-muzzle-flash');
     const impactRing = story.querySelector<SVGCircleElement>('.fleet-impact');
+    const targetLock = story.querySelector<SVGGElement>('.fleet-target-lock');
+    const targetHealth = story.querySelector<SVGRectElement>('.fleet-target-health-live');
+    const threatCleared = story.querySelector<SVGGElement>('.fleet-threat-cleared');
+    const weaponCycle = story.querySelector<SVGCircleElement>('.fleet-weapon-cycle');
     const rope = story.querySelector<SVGPathElement>('.fleet-deployment-rope');
     const rappellers = Array.from(story.querySelectorAll<SVGGElement>('.fleet-rappeller'));
     const groundAdvance = story.querySelector<SVGPathElement>('.fleet-ground-advance');
+    const etaValue = story.querySelector<SVGTextElement>('.fleet-eta-value');
+    const payloadManifest = story.querySelector<SVGGElement>('.fleet-payload-manifest');
     const lengths = paths.map((path) => path.getTotalLength());
     let frame = 0;
     let disposed = false;
@@ -128,6 +134,10 @@ export default function AirFleetStory() {
         lanes[index]?.classList.toggle('is-engaging', state.inCombat);
         lanes[index]?.style.setProperty('--arrival', String(state.arrival));
         lanes[index]?.style.setProperty('--gold-opacity', String(state.goldOpacity));
+        lanes[index]?.style.setProperty('--readiness', String(state.readiness));
+        lanes[index]?.style.setProperty('--flight', String(state.flight));
+        lanes[index]?.style.setProperty('--target-opacity', String(state.targetOpacity));
+        lanes[index]?.style.setProperty('--target-health', String(state.targetHealth));
         lanes[index]?.style.setProperty('--range-opacity', state.flight === 1 ? '1' : '0');
         if (index === 1) {
           enemy?.setAttribute('transform', `translate(${1080 - state.enemyFlight * 210} 170)`);
@@ -141,6 +151,10 @@ export default function AirFleetStory() {
           muzzleFlash?.style.setProperty('opacity', String(state.muzzleOpacity));
           impactRing?.setAttribute('r', String(12 + state.impact * 48));
           impactRing?.style.setProperty('opacity', String(state.impactOpacity));
+          targetLock?.style.setProperty('opacity', String(state.lockOpacity));
+          targetHealth?.setAttribute('width', String(82 * state.targetHealth));
+          threatCleared?.style.setProperty('opacity', String(state.threatCleared));
+          weaponCycle?.setAttribute('stroke-dashoffset', String(100 - state.weaponCycle * 100));
         }
         if (index === 2) {
           rope?.setAttribute('d', `M 1070 125 V ${125 + 130 * state.ropeLength}`);
@@ -152,6 +166,8 @@ export default function AirFleetStory() {
             trooper.style.setProperty('opacity', String(opacity));
           });
           groundAdvance?.style.setProperty('opacity', String(state.troopsOpacity));
+          payloadManifest?.style.setProperty('opacity', String(state.payloadOpacity));
+          if (etaValue) etaValue.textContent = state.flight >= 1 ? (state.ropeLength > 0 ? 'DEPLOYING' : 'ON TARGET') : `${Math.max(0, Math.ceil((1 - state.flight) * 24))}s`;
         }
       });
     };
@@ -228,7 +244,14 @@ export default function AirFleetStory() {
                   {unit.kind === 'trade' && <>
                     <AirportNode x={130} y={230} label="Origin airport" />
                     <AirportNode x={1070} y={230} label="Partner airport" />
+                    <g className="fleet-airport-ready fleet-airport-ready-origin" transform="translate(130 185)"><circle r="10" /><path d="M -4 0 L -1 4 L 6 -5" /></g>
+                    <g className="fleet-airport-ready fleet-airport-ready-partner" transform="translate(1070 185)"><circle r="10" /><path d="M -4 0 L -1 4 L 6 -5" /></g>
+                    <g className="fleet-route-checkpoints">
+                      <g transform="translate(390 143)"><circle r="10" /><text y="-18" textAnchor="middle">ROUTE VALID</text></g>
+                      <g transform="translate(812 143)"><circle r="10" /><text y="-18" textAnchor="middle">IN TRANSIT</text></g>
+                    </g>
                     <g className="fleet-gold-reward"><text x="130" y="155" textAnchor="middle">+ GOLD</text><text x="1070" y="155" textAnchor="middle">+ GOLD</text></g>
+                    <path className="fleet-payment-link" d="M 1018 176 H 1122" />
                     <text className="fleet-diagram-label" x="600" y="58" textAnchor="middle">TRADE DELIVERY</text>
                   </>}
                   {unit.kind === 'fighter' && <>
@@ -240,6 +263,8 @@ export default function AirFleetStory() {
                     <g className="fleet-enemy" transform="translate(1080 170)">
                       <path d="M 24 0 H 62" /><polygon points="-17,0 12,12 12,-12" />
                     </g>
+                    <g className="fleet-target-lock" transform="translate(870 170)"><path d="M -38 -22 V -38 H -22 M 22 -38 H 38 V -22 M 38 22 V 38 H 22 M -22 38 H -38 V 22" /><circle r="29" /></g>
+                    <g className="fleet-target-health" transform="translate(829 216)"><rect width="82" height="7" rx="3.5" /><rect className="fleet-target-health-live" width="82" height="7" rx="3.5" /></g>
                     <path className="fleet-shot-trail" d="M 762 170 H 762" />
                     <g className="fleet-muzzle-flash" transform="translate(762 170)"><path d="M -7 0 H 15 M 0 -10 V 10 M -5 -7 8 7 M -5 7 8 -7" /></g>
                     <g className="fleet-shell" transform="translate(762 170)">
@@ -248,6 +273,7 @@ export default function AirFleetStory() {
                       <path className="fleet-projectile-body" d="M -8 -3 H 7 L 15 0 7 3 H -8 Z" />
                     </g>
                     <circle className="fleet-impact" cx="870" cy="170" r="12" />
+                    <g className="fleet-threat-cleared" transform="translate(870 170)"><circle r="38" /><path d="M -14 0 L -4 11 L 17 -15" /><text y="64" textAnchor="middle">THREAT CLEARED</text></g>
                     <text className="fleet-diagram-label" x="650" y="330" textAnchor="middle">STOP AT RANGE · SHOOT, DON’T COLLIDE</text>
                   </>}
                   {unit.kind === 'helicopter' && <>
@@ -256,6 +282,8 @@ export default function AirFleetStory() {
                     <path className="fleet-landing-cross" d="M 1055 255 H 1085 M 1070 240 V 270" />
                     <text className="fleet-diagram-label" x="1070" y="330" textAnchor="middle">Landing tile</text>
                     <text className="fleet-diagram-label" x="600" y="58" textAnchor="middle">COMMITTED TROOPS · ONE-WAY INSERTION</text>
+                    <g className="fleet-payload-manifest" transform="translate(185 150)"><text x="0" y="-17">TROOPS COMMITTED</text>{[0, 1, 2].map((trooper) => <circle key={trooper} cx={trooper * 18} r="6" />)}</g>
+                    <g className="fleet-eta" transform="translate(730 76)"><rect x="-72" y="-18" width="144" height="36" rx="18" /><text x="-47" y="6">ETA</text><text className="fleet-eta-value" x="52" y="6" textAnchor="end">24s</text></g>
                     <path className="fleet-deployment-rope" d="M 1070 125 V 125" />
                     {[0, 1, 2].map((trooper) => <g key={trooper} className="fleet-rappeller" transform="translate(1070 140)">
                       <circle cx="0" cy="-9" r="4" />
@@ -270,6 +298,9 @@ export default function AirFleetStory() {
                     <circle className="fleet-signal-inner" r="21" />
                     <path className="fleet-unit-tail" d="M -54 0 H -20" />
                     <polygon className="fleet-unit-body" points={unit.points} />
+                    {unit.kind === 'fighter' && <><polygon className="fleet-unit-core" points="10,0 3,9 -8,5 -8,-5 3,-9" /><circle className="fleet-weapon-cycle" r="35" pathLength="100" strokeDasharray="100" strokeDashoffset="100" /></>}
+                    {unit.kind === 'trade' && <g className="fleet-cargo-packets"><rect x="-6" y="-5" width="5" height="10" /><rect x="2" y="-5" width="5" height="10" /></g>}
+                    {unit.kind === 'helicopter' && <g className="fleet-payload-dots"><circle cx="-5" r="2.5" /><circle cx="2" r="2.5" /><circle cx="9" r="2.5" /></g>}
                   </g>
                 </g>
               ))}

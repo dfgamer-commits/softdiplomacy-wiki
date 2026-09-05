@@ -274,6 +274,7 @@ button, input { font: inherit; }
 .campaign-svg-unit .marker-body { fill: var(--cyan); stroke: rgba(255, 255, 255, 0.82); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .campaign-svg-unit .marker-trail { fill: none; stroke: var(--cyan); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; animation: marker-trail-flow 0.7s linear infinite; }
 .campaign-svg-unit .marker-signal { fill: rgba(92, 230, 244, 0.08); stroke: rgba(92, 230, 244, 0.62); stroke-width: 1; vector-effect: non-scaling-stroke; animation: marker-signal 1.8s ease-out infinite; }
+.campaign-svg-unit .marker-core { fill: #081218; stroke: rgba(255,255,255,.78); stroke-width: .8; vector-effect: non-scaling-stroke; }
 .campaign-svg-unit-fighter { filter: drop-shadow(0 0 10px rgba(255, 114, 95, 0.9)); }
 .campaign-svg-unit-fighter .marker-body { fill: #ff725f; }
 .campaign-svg-unit-fighter .marker-trail { stroke: #ff725f; }
@@ -282,6 +283,18 @@ button, input { font: inherit; }
 .campaign-svg-unit-helicopter .marker-body { fill: var(--amber); }
 .campaign-svg-unit-helicopter .marker-trail { stroke: var(--amber); }
 .campaign-svg-unit-helicopter .marker-signal { fill: rgba(255, 199, 96, 0.08); stroke: rgba(255, 199, 96, 0.68); }
+.campaign-trade-arrival { opacity: var(--trade-arrival, 0); color: var(--amber); }
+.campaign-trade-arrival circle { fill: none; stroke: var(--amber); stroke-width: 1.5; }
+.campaign-trade-arrival circle:nth-child(2) { stroke-dasharray: 3 6; transform: rotate(calc(var(--story-progress) * 180deg)); transform-origin: center; }
+.campaign-trade-arrival text { fill: var(--amber); font: 700 15px/1 var(--font-display); letter-spacing: .07em; }
+.campaign-target-lock { fill: none; stroke: var(--amber); stroke-width: 2; opacity: var(--fighter-lock, 0); filter: drop-shadow(0 0 5px var(--amber)); }
+.campaign-target-lock circle { stroke-dasharray: 3 6; }
+.campaign-fighter-shell { fill: var(--amber); stroke: #fff3d5; stroke-width: 1; filter: drop-shadow(0 0 5px var(--amber)); }
+.campaign-fighter-shell path { fill: none; stroke: var(--amber); stroke-width: 3; }
+.campaign-fighter-impact { fill: none; stroke: #ff725f; stroke-width: 2; opacity: var(--fighter-impact-ring, 0); transform: scale(calc(.4 + var(--fighter-impact, 0) * 1.6)); transform-origin: 570px 210px; }
+.campaign-deployment-rope { fill: none; stroke: #ffe7aa; stroke-width: 2; opacity: var(--helicopter-deploy, 0); }
+.campaign-deployed-troop { fill: var(--amber); stroke: #ffe7aa; stroke-width: 2; stroke-linecap: round; }
+.campaign-deployed-troop path { fill: none; }
 @keyframes marker-trail-flow { to { stroke-dashoffset: -9; } }
 @keyframes marker-signal {
   from { opacity: 0.9; transform: scale(0.5); }
@@ -423,7 +436,7 @@ button, input { font: inherit; }
 .fleet-scene::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 79px, rgba(92,230,244,0.06) 79px 80px); }
 .fleet-direction { position: absolute; inset: 14px 18px auto; display: flex; justify-content: space-between; gap: 12px; color: #afc9d4; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .fleet-routes { display: block; width: 100%; height: 100%; }
-.fleet-lane { --flight-color: var(--cyan); --arrival: 0; --gold-opacity: 0; color: var(--flight-color); opacity: 0; visibility: hidden; transition: opacity 0.25s ease; }
+.fleet-lane { --flight-color: var(--cyan); --arrival: 0; --gold-opacity: 0; --readiness: 0; --flight: 0; --target-opacity: 1; --target-health: 1; color: var(--flight-color); opacity: 0; visibility: hidden; transition: opacity 0.25s ease; }
 .fleet-story[data-active='0'] .fleet-lane-trade,
 .fleet-story[data-active='1'] .fleet-lane-fighter,
 .fleet-story[data-active='2'] .fleet-lane-helicopter { opacity: 1; visibility: visible; }
@@ -433,6 +446,10 @@ button, input { font: inherit; }
 .fleet-route-progress { stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 5px currentColor); }
 .fleet-aircraft { filter: drop-shadow(0 0 8px currentColor); }
 .fleet-unit-body { fill: currentColor; stroke: #edfaff; stroke-width: 1; }
+.fleet-unit-core { fill: #081d27; stroke: #edfaff; stroke-width: .8; }
+.fleet-cargo-packets rect { fill: #081d27; stroke: #d9fbff; stroke-width: .7; }
+.fleet-payload-dots circle { fill: #081d27; stroke: #fff0bd; stroke-width: .7; }
+.fleet-weapon-cycle { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; transform: rotate(-90deg); opacity: .82; }
 .fleet-signal { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 3 7; opacity: 0.42; }
 .fleet-signal-inner { fill: #081d27; fill-opacity: 0.7; stroke: currentColor; opacity: 0.65; }
 .fleet-unit-tail { stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 3 6; }
@@ -483,11 +500,23 @@ button, input { font: inherit; }
 .fleet-diagram-label { font-size: 19px; letter-spacing: 0.035em; }
 .fleet-gold-reward { opacity: var(--gold-opacity); }
 .fleet-gold-reward text { fill: var(--amber); font: 700 25px/1 var(--font-display); }
+.fleet-payment-link { stroke: var(--amber); stroke-width: 2; stroke-dasharray: 5 7; opacity: var(--gold-opacity); filter: drop-shadow(0 0 5px var(--amber)); }
+.fleet-airport-ready { opacity: var(--readiness); }
+.fleet-airport-ready circle { fill: #0b302c; stroke: var(--lime); stroke-width: 1.5; }
+.fleet-airport-ready path { fill: none; stroke: var(--lime); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fleet-route-checkpoints { opacity: calc(.16 + var(--flight) * .84); }
+.fleet-route-checkpoints circle { fill: #081d27; stroke: var(--cyan); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.fleet-route-checkpoints text { fill: #7da6b5; font: 600 12px/1 ui-monospace, monospace; letter-spacing: .08em; }
 .fleet-firing-range { stroke: currentColor; stroke-dasharray: 5 10; stroke-opacity: 0.3; fill: currentColor; fill-opacity: 0.025; }
 .fleet-firing-range, .fleet-range-label { opacity: var(--range-opacity, 0); }
 .fleet-enemy-course { stroke: #ff7c68; stroke-dasharray: 5 7; opacity: 0.45; }
 .fleet-enemy-label { fill: #ffb1a5; }
 .fleet-enemy { fill: #ff7c68; stroke: #ffb1a5; stroke-width: 1.5; }
+.fleet-target-lock { fill: none; stroke: var(--amber); stroke-width: 2; filter: drop-shadow(0 0 5px var(--amber)); opacity: 0; }
+.fleet-target-lock circle { stroke-dasharray: 3 7; }
+.fleet-target-health { opacity: var(--target-opacity); }
+.fleet-target-health > rect:first-child { fill: #3a2023; stroke: #ff9e91; stroke-width: 1; }
+.fleet-target-health-live { fill: #ff7c68; transform-origin: left center; }
 .fleet-shell { filter: drop-shadow(0 0 7px var(--amber)); opacity: 0; }
 .fleet-projectile-body { fill: #fff2ce; stroke: white; stroke-width: 0.7; }
 .fleet-projectile-fin { fill: #c7dce3; }
@@ -495,12 +524,20 @@ button, input { font: inherit; }
 .fleet-shot-trail { stroke: var(--amber); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--amber)); opacity: 0; }
 .fleet-muzzle-flash { stroke: #fff2ce; stroke-width: 2; stroke-linecap: round; opacity: 0; }
 .fleet-impact { fill: none; stroke: var(--amber); stroke-width: 3; opacity: 0; }
+.fleet-threat-cleared { fill: none; stroke: var(--lime); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; filter: drop-shadow(0 0 6px rgba(183,239,94,.5)); }
+.fleet-threat-cleared text { fill: var(--lime); stroke: none; font: 700 12px/1 ui-monospace, monospace; letter-spacing: .08em; }
 .fleet-landing-tile { stroke: #ff7c68; stroke-dasharray: 5 5; stroke-width: 2; fill: #ff7c68; fill-opacity: 0.06; }
 .fleet-landing-cross { stroke: var(--amber); stroke-width: 2; opacity: calc(1 - var(--arrival)); }
 .fleet-deployment-rope { stroke: #e2d7ad; stroke-width: 2; stroke-linecap: round; opacity: 0; }
 .fleet-rappeller { fill: var(--amber); stroke: #ffe0a0; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
 .fleet-rappeller path { fill: none; }
 .fleet-ground-advance { stroke: var(--amber); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.fleet-payload-manifest { fill: var(--amber); }
+.fleet-payload-manifest text { fill: #d3b267; font: 600 12px/1 ui-monospace, monospace; letter-spacing: .07em; }
+.fleet-payload-manifest circle { stroke: #fff0bd; stroke-width: 1; }
+.fleet-eta rect { fill: rgba(8,29,39,.88); stroke: var(--amber); stroke-width: 1; }
+.fleet-eta text { fill: #8ca9b5; font: 600 13px/1 ui-monospace, monospace; letter-spacing: .06em; }
+.fleet-eta .fleet-eta-value { fill: var(--amber); font-weight: 800; }
 .fleet-end { scroll-margin-top: 100px; outline: none; }
 .fleet-chapter a:focus-visible, .fleet-controls button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 

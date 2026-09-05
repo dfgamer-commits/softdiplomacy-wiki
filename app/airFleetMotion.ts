@@ -77,6 +77,7 @@ export function fleetMission(index: number, progress: number) {
     : p < 0.1 ? 0 : p < 0.8 ? 1 : p < 0.92 ? 2 : 3;
   return {
     flight, phase, arrival, projectile, impact,
+    readiness: ease(p / 0.08),
     enemyFlight: isFighter ? ease((p - 0.04) / 0.32) : 0,
     inCombat: isFighter && p >= 0.4 && p < 0.82,
     aircraftOpacity: isFighter ? 1 : 1 - arrival,
@@ -84,8 +85,13 @@ export function fleetMission(index: number, progress: number) {
     projectileOpacity: isFighter && p >= 0.52 && p < 0.7 ? 1 : 0,
     muzzleOpacity: isFighter && p >= 0.52 && p < 0.56 ? 1 - clamp((p - 0.52) / 0.04) : 0,
     impactOpacity: isFighter && p >= 0.7 && p < 0.82 ? Math.sin(impact * Math.PI) : 0,
+    lockOpacity: isFighter ? ease((p - 0.4) / 0.08) * (1 - ease((p - 0.7) / 0.06)) : 0,
+    targetHealth: isFighter ? 1 - impact : 0,
+    threatCleared: isFighter ? ease((p - 0.78) / 0.08) : 0,
+    weaponCycle: isFighter ? ease((p - 0.4) / 0.3) : 0,
     goldOpacity: index === 0 ? ease((p - 0.92) / 0.06) : 0,
     troopsOpacity: isHelicopter ? ease((p - 0.96) / 0.04) : 0,
+    payloadOpacity: isHelicopter ? 1 - ease((p - 0.1) / 0.08) : 0,
     ropeLength: isHelicopter ? ease((p - 0.62) / 0.06) : 0,
     ropeOpacity: isHelicopter && p >= 0.62 ? 1 - ease((p - 0.91) / 0.05) : 0,
     rappellers: [0.7, 0.74, 0.78].map((start) => ({

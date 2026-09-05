@@ -12,23 +12,58 @@ type Point = { x: number; y: number };
 function Route({ d, progress, air = false, rail = false, trail = true }: { d: string; progress: number; air?: boolean; rail?: boolean; trail?: boolean }) {
   const pathRef = useRef<SVGPathElement>(null);
   const unitRef = useRef<SVGGElement>(null);
+  const trainCarRefs = useRef<Array<SVGGElement | null>>([]);
+  const trainCouplerRefs = useRef<Array<SVGLineElement | null>>([]);
   useLayoutEffect(() => {
     const path = pathRef.current;
-    const unit = unitRef.current;
-    if (!path || !unit) return;
+    if (!path) return;
     const length = path.getTotalLength();
-    const distance = length * progress;
-    const point = path.getPointAtLength(distance);
-    const from = path.getPointAtLength(Math.max(0, distance - 1));
-    const to = path.getPointAtLength(Math.min(length, distance + 1));
-    unit.setAttribute('transform', `translate(${point.x} ${point.y}) rotate(${Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI})`);
-  }, [d, progress]);
+    const poseAt = (distance: number) => {
+      const bounded = Math.min(length, Math.max(0, distance));
+      const point = path.getPointAtLength(bounded);
+      const from = path.getPointAtLength(Math.max(0, bounded - 2));
+      const to = path.getPointAtLength(Math.min(length, bounded + 2));
+      return { point, angle: Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI };
+    };
+    if (rail) {
+      // The nose travels station-to-station while every carriage samples its own
+      // point and tangent. This is what lets the consist articulate through bends.
+      const nose = 70 + progress * Math.max(0, length - 140);
+      const poses = [0, 34, 68].map((offset) => poseAt(nose - offset));
+      poses.forEach(({ point, angle }, index) => {
+        trainCarRefs.current[index]?.setAttribute('transform', `translate(${point.x} ${point.y}) rotate(${angle})`);
+      });
+      trainCouplerRefs.current.forEach((coupler, index) => {
+        const front = poses[index]?.point;
+        const rear = poses[index + 1]?.point;
+        if (!coupler || !front || !rear) return;
+        coupler.setAttribute('x1', String(front.x));
+        coupler.setAttribute('y1', String(front.y));
+        coupler.setAttribute('x2', String(rear.x));
+        coupler.setAttribute('y2', String(rear.y));
+      });
+      return;
+    }
+    const unit = unitRef.current;
+    if (!unit) return;
+    const { point, angle } = poseAt(length * progress);
+    unit.setAttribute('transform', `translate(${point.x} ${point.y}) rotate(${angle})`);
+  }, [d, progress, rail]);
   return <>
     <path className="category-route-base" d={d} />
     <path ref={pathRef} className="category-route-live" d={d} pathLength="100" strokeDasharray="100" strokeDashoffset={100 - progress * 100} opacity={trail ? 1 : 0} />
-    <g ref={unitRef} transform="translate(110 180)">
-      {rail ? <><rect x="-38" y="-9" width="23" height="18" rx="3" /><rect x="-10" y="-9" width="23" height="18" rx="3" /><rect x="18" y="-9" width="28" height="18" rx="3" /></> : <Unit air={air} />}
-    </g>
+    {rail ? <g className="category-train">
+      {[0, 1].map((index) => <line key={`coupler-${index}`} ref={(node) => { trainCouplerRefs.current[index] = node; }} className="category-train-coupler" />)}
+      {[0, 1, 2].map((index) => <g key={`car-${index}`} ref={(node) => { trainCarRefs.current[index] = node; }} className={`category-train-car${index === 0 ? ' category-train-engine' : ''}`}>
+        <rect className="category-train-body" x="-14" y="-10" width="28" height="20" rx="4" />
+        <path className="category-train-roof" d="M -10 -10 H 10" />
+        <rect className="category-train-window" x="-8" y="-6" width="7" height="6" rx="1" />
+        <rect className="category-train-window" x="3" y="-6" width="7" height="6" rx="1" />
+        <circle className="category-train-wheel" cx="-8" cy="11" r="3" />
+        <circle className="category-train-wheel" cx="8" cy="11" r="3" />
+        {index === 0 && <path className="category-train-nose" d="M 14 -7 L 20 0 L 14 7 Z" />}
+      </g>)}
+    </g> : <g ref={unitRef} transform="translate(110 180)"><Unit air={air} /></g>}
   </>;
 }
 
@@ -63,7 +98,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
   const air = Boolean(topic.air);
   const route = 'M 110 180 C 250 180 230 85 385 85 S 560 180 690 180';
   const landingRoute = air ? 'M 110 180 C 290 180 380 85 580 85' : 'M 110 180 C 260 180 305 110 440 110 S 510 205 580 205';
-  const railRoute = 'M 110 180 L 270 180 Q 305 180 305 145 V 120 Q 305 85 340 85 H 470 Q 505 85 505 120 V 145 Q 505 180 540 180 H 690';
+  const railRoute = 'M 40 180 H 245 C 310 180 285 88 355 88 H 445 C 515 88 490 180 555 180 H 760';
   const fighterX = 110 + 340 * state.action;
   const endpoint = air ? 'Airport' : 'Port';
   const isWater = !air && ['trade', 'landing', 'intercept'].includes(topic.scene);
@@ -116,6 +151,9 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
     {topic.scene === 'rail' && <>
       <path className="category-rail-bed" d={railRoute} pathLength="100" strokeDasharray="100" strokeDashoffset={100 - state.prepare * 100} />
       <path className="category-rail-ties" d={railRoute} opacity={state.prepare} />
+      <path className="category-rail-center" d={railRoute} opacity={state.prepare} />
+      <g className="category-platforms" opacity={state.prepare}><rect x="64" y="204" width="92" height="9" rx="2" /><rect x="644" y="204" width="92" height="9" rx="2" /></g>
+      <g className="category-rail-signal" opacity={state.prepare} transform="translate(316 116)"><path d="M 0 38 V 2 H 20" /><circle cx="20" cy="2" r="8" /><circle className={state.action > 0 ? 'is-clear' : ''} cx="20" cy="2" r="3" /></g>
       <Station x={110} y={180} label="Factory" />
       <Station x={690} y={180} label={air ? 'Airport station' : 'Port station'} airport={air} />
       <g className="category-cyan" opacity={state.prepare}><Route d={railRoute} progress={state.action} rail trail={false} /></g>

@@ -55,9 +55,15 @@ test('fighter stops at range, fires one shell, then removes the target', () => {
   assert.equal(fleetMission(1, 0.6).targetOpacity, 1);
   assert.equal(fleetMission(1, 0.8).targetOpacity, 0);
   assert.equal(fleetMission(1, 1).inCombat, false);
+  assert.ok(fleetMission(1, 0.46).lockOpacity > 0);
+  assert.equal(fleetMission(1, 0.6).targetHealth, 1);
+  assert.equal(fleetMission(1, 0.82).targetHealth, 0);
+  assert.equal(fleetMission(1, 1).threatCleared, 1);
 });
 
 test('troops only appear after landing and consuming the helicopter', () => {
+  assert.equal(fleetMission(2, 0).payloadOpacity, 1);
+  assert.equal(fleetMission(2, 0.2).payloadOpacity, 0);
   assert.equal(fleetMission(2, 0.5).troopsOpacity, 0);
   assert.equal(fleetMission(2, 0.9).troopsOpacity, 0);
   assert.equal(fleetMission(2, 1).flight, 1);
