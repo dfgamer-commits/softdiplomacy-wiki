@@ -10,7 +10,8 @@
     "build": "vinext build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "verify:content": "node scripts/verify-wiki-completeness.mjs"
+    "verify:content": "node scripts/verify-wiki-completeness.mjs",
+    "verify:images": "node scripts/verify-upstream-images.mjs"
   },
   "dependencies": {
     "next": "16.2.6",

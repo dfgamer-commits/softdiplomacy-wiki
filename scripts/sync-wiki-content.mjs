@@ -89,7 +89,7 @@ const customPages = [
     <h2 id="What_stays_the_same">What stays the same</h2>
     <p>OpenFront’s existing combat, diplomacy, territory, buildings, ports, ships, trains, nuclear weapons, bots, controls, and economy remain the baseline. Air additions are kept behind their own unit types, executions, rendering, and parity tests.</p>
     <h2 id="Update_policy">Update policy</h2>
-    <p>The official OpenFront repository and community wiki are checked every 36 hours. Compatible upstream fixes are reviewed, tests and production builds are run, and this wiki records the air-specific behavior.</p>`,
+    <p>The official OpenFront repository and community wiki are checked every 48 hours. Compatible upstream fixes are reviewed, tests and production builds are run, and this wiki records the air-specific behavior.</p>`,
   ),
   page(
     'Air_Units',
@@ -260,7 +260,7 @@ gold = floor(baseGold * playerGoldMultiplier)</pre><p>For a normal completed fli
     `<p>SoftDiplomacy treats original OpenFront behavior as a contract. The air modification is considered correct only when existing mechanics continue to behave the same and air units add parallel capabilities.</p>
     <h2 id="Protected_scope">Protected scope</h2><ul><li>Warship movement, combat, repair, piracy, veterancy, and price behavior remain unchanged.</li><li>Trade ships retain their spawn, route, payout, and capture behavior.</li><li>Transport ships retain troop loading, route, warning, landing, and retreat behavior.</li><li>Ports, factories, cities, trains, railroads, missiles, diplomacy, bots, controls, and the HUD retain upstream semantics.</li></ul>
     <h2 id="Air_extensions">Air extensions</h2><p>Passenger planes call parallel air-trade code; fighters call parallel fighter code configured from warship values; helicopters call parallel special-operations code modeled on transport ships; airports extend the supported railroad-station types without changing port payouts.</p>
-    <h2 id="Verification">Verification</h2><p>The repository includes base-mechanics parity tests plus focused tests for aircraft trade, fighter combat, aircraft interception, airport rail connections, train income, rendering, controls, bots, and full lifecycle behavior. Each 36-hour audit runs formatting, linting, tests, and a production build before validated changes are pushed.</p>`,
+    <h2 id="Verification">Verification</h2><p>The repository includes base-mechanics parity tests plus focused tests for aircraft trade, fighter combat, aircraft interception, airport rail connections, train income, rendering, controls, bots, and full lifecycle behavior. Each 48-hour audit runs formatting, linting, tests, and a production build before validated changes are pushed.</p>`,
   ),
   page(
     'Update_Status',
@@ -272,9 +272,9 @@ gold = floor(baseGold * playerGoldMultiplier)</pre><p>For a normal completed fli
       { id: 'Cadence', text: 'Cadence', level: 2 },
     ],
     `<p>This page records the latest source audit used to update the SoftDiplomacy game and wiki.</p>
-    <h2 id="Latest_audit">Latest audit</h2><div class="sd-spec-grid"><div class="sd-spec"><span>Audit date</span><strong>${auditedAtDisplay}</strong></div><div class="sd-spec"><span>OpenFront main</span><strong>${auditedRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>OpenFront wiki</span><strong>${auditedWikiRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>Wiki coverage</span><strong>Every official source page</strong></div><div class="sd-spec"><span>Next check</span><strong>Within 36 hours</strong></div></div>
+    <h2 id="Latest_audit">Latest audit</h2><div class="sd-spec-grid"><div class="sd-spec"><span>Audit date</span><strong>${auditedAtDisplay}</strong></div><div class="sd-spec"><span>OpenFront main</span><strong>${auditedRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>OpenFront wiki</span><strong>${auditedWikiRevision.slice(0, 10)}</strong></div><div class="sd-spec"><span>Wiki coverage</span><strong>Every official source page</strong></div><div class="sd-spec"><span>Next check</span><strong>Within 48 hours</strong></div></div>
     <h2 id="Sources">Sources</h2><ul><li><a class="external" href="https://github.com/openfrontio/OpenFrontIO">Official OpenFront GitHub repository</a></li><li><a class="external" href="https://openfront.wiki/">OpenFront community wiki</a></li><li><a class="external" href="https://github.com/openfrontio/wiki">OpenFront wiki source repository</a></li><li><a class="external" href="https://github.com/dfgamer-commits/soft-diplomacy">SoftDiplomacy game repository</a></li></ul>
-    <h2 id="Cadence">Cadence</h2><p>An automated task reopens this audit every 36 hours. It compares source history, reviews wiki changes, validates compatibility, updates these pages, and pushes only after the relevant checks pass.</p>`,
+    <h2 id="Cadence">Cadence</h2><p>An automated task reopens this audit every 48 hours. It compares source history, reviews wiki changes, validates compatibility, updates these pages, and pushes only after the relevant checks pass.</p>`,
   ),
 ];
 

@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { isDeepStrictEqual } from 'node:util';
@@ -59,6 +59,10 @@ async function loadGeneratedPage(slug) {
 async function assertFile(filePath, message) {
   try {
     await access(filePath);
+    const fileStats = await stat(filePath);
+    if (!fileStats.isFile() || fileStats.size === 0) {
+      throw new Error('file is empty or not a regular file');
+    }
   } catch {
     throw new Error(`${message}: ${filePath}`);
   }
@@ -71,6 +75,7 @@ const index = JSON.parse(
 );
 const indexBySlug = new Map(index.map((entry) => [entry.slug, entry]));
 let referencedImages = 0;
+const staleOfficialSlugs = [];
 
 for (const sourceEntry of officialPages) {
   if (officialSlugs.has(sourceEntry.slug)) {
@@ -87,6 +92,10 @@ for (const sourceEntry of officialPages) {
   }
   if (actual.softDiplomacy) {
     throw new Error(`Official page was overridden by custom content: ${sourceEntry.slug}`);
+  }
+
+  if (/article needs to be\s*<b>updated<\/b>|article is a stub/i.test(actual.html)) {
+    staleOfficialSlugs.push(actual.slug);
   }
 
   const expectedIndex = Object.fromEntries(
@@ -106,6 +115,79 @@ for (const sourceEntry of officialPages) {
     await assertFile(localImage, `Missing image referenced by ${sourceEntry.slug}`);
     referencedImages++;
   }
+}
+
+const contextSource = await readFile(
+  path.join(projectRoot, 'app', 'SoftDiplomacyContext.tsx'),
+  'utf8',
+);
+const requiredContextPages = [
+  'Buildings',
+  'Controls',
+  'Gold',
+  'Trade',
+  'Port',
+  'Railroad',
+  'Train',
+  'Factory',
+  'Trade_Ship',
+  'Warship',
+  'Transport_Ship',
+  'Troops',
+  'Maps',
+  'SAM_Launcher',
+  'Missile_Silo',
+  'Nuke',
+  'Atom_Bomb',
+  'Hydrogen_Bomb',
+  'MIRV',
+];
+for (const slug of requiredContextPages) {
+  if (!contextSource.includes(slug)) {
+    throw new Error(`Missing SoftDiplomacy context coverage for ${slug}`);
+  }
+}
+
+for (const slug of staleOfficialSlugs) {
+  if (!contextSource.includes(slug)) {
+    throw new Error(
+      `Stale official article has no current SoftDiplomacy context: ${slug}`,
+    );
+  }
+}
+
+for (const fact of [
+  'The air layer is live—not planned.',
+  'Passenger planes are automatic airport traffic',
+  '13 purchasable items · 3 air additions',
+  'Fighter jets do not intercept missiles',
+]) {
+  if (!contextSource.includes(fact)) {
+    throw new Error(`Current-site context is missing required fact: ${fact}`);
+  }
+}
+
+for (const icon of [
+  'AirportIconWhite.svg',
+  'FighterPentagonIconWhite.svg',
+  'AirTransportTriangleIconWhite.svg',
+]) {
+  await assertFile(
+    path.join(projectRoot, 'public', 'images', icon),
+    'Missing current SoftDiplomacy build-catalog icon',
+  );
+}
+
+const allLocalImages = await readdir(path.join(projectRoot, 'public', 'images'), {
+  recursive: true,
+  withFileTypes: true,
+});
+let localImageFiles = 0;
+for (const image of allLocalImages) {
+  if (!image.isFile()) continue;
+  const imagePath = path.join(image.parentPath, image.name);
+  await assertFile(imagePath, 'Invalid local wiki image');
+  localImageFiles++;
 }
 
 const requiredAirStructure = {
@@ -308,5 +390,5 @@ if (officialIndexCount !== officialPages.length) {
 }
 
 console.log(
-  `Verified ${officialPages.length} exact official pages, ${referencedImages} image references, and complete naval-twin coverage for 4 air articles.`,
+  `Verified ${officialPages.length} exact official pages, ${referencedImages} image references, ${localImageFiles} non-empty local images, current context for ${requiredContextPages.length} affected articles, archived handling for ${staleOfficialSlugs.length} stale source articles, and complete naval-twin coverage for 4 air articles.`,
 );

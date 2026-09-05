@@ -11,6 +11,9 @@ import {
 import { flushSync } from 'react-dom';
 import AirFleetStory from './AirFleetStory';
 import CategoryStory, { CategoryAtlas } from './CategoryStory';
+import SoftDiplomacyContext, {
+  sourceNeedsReview,
+} from './SoftDiplomacyContext';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -550,6 +553,10 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
     () => (page ? headingsFromHtml(page.html) : []),
     [page],
   );
+  const legacySourceNeedsReview = useMemo(
+    () => Boolean(page && !page.softDiplomacy && sourceNeedsReview(page.html)),
+    [page],
+  );
 
   useEffect(() => {
     const article = articleRef.current;
@@ -558,7 +565,7 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const revealTargets = Array.from(
       article.querySelectorAll<HTMLElement>(
-        '.wiki-content > *, .air-topic-deck, .air-topic-card, .article-license',
+        '.sd-context, .sd-context-grid > *, .current-build-catalog, .wiki-content > *, .air-topic-deck, .air-topic-card, .article-license',
       ),
     );
 
@@ -654,7 +661,24 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
           {page.cats?.length > 0 && <div className="tag-row">{page.cats.filter((cat) => !/stub|broken|all pages/i.test(cat)).slice(0, 6).map((cat) => <span key={cat}>{cat}</span>)}</div>}
           <div className="rule" />
           <CategoryStory slug={slug} />
-          <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
+          {!page.softDiplomacy && <SoftDiplomacyContext slug={slug} />}
+          {legacySourceNeedsReview ? (
+            <details className="legacy-source">
+              <summary>
+                <span>Original OpenFront source article</span>
+                <strong>Archived reference · the source marks this page as incomplete or outdated</strong>
+              </summary>
+              <div className="legacy-source-note">
+                The complete upstream article and its original images are preserved below for source fidelity. Use the current SoftDiplomacy section above for live air-unit information.
+              </div>
+              <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
+            </details>
+          ) : (
+            <>
+              {!page.softDiplomacy && <div className="official-source-label"><span>OPENFRONT SOURCE</span><p>Official article mirrored from the current community-wiki source.</p></div>}
+              <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
+            </>
+          )}
           {slug === 'Air_Units' && <AirTopicDeck />}
           <footer className="article-license">
             {page.source === 'liquipedia' ? (
