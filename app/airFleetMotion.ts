@@ -43,7 +43,7 @@ export const FLEET_MISSIONS = [
     steps: ['Patrol', 'Acquire target', 'Fire a shell', 'Threat removed'],
     captions: [
       'An enemy helicopter approaches the fighter’s patrol area.',
-      'The fighter closes to firing range, then holds its distance.',
+      'The fighter engages the helicopter once it is within firing range.',
       'A forward projectile and glowing trail show the shot. In the game, this weapon is a shell.',
       'The shell destroys the helicopter. The jet returns to patrol.',
     ],

@@ -2,6 +2,7 @@ import { access, readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { isDeepStrictEqual } from 'node:util';
+import { CATEGORY_TOPICS } from '../app/categoryMotion.ts';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const contentRoot = path.join(projectRoot, 'public', 'content');
@@ -117,53 +118,49 @@ for (const sourceEntry of officialPages) {
   }
 }
 
-const contextSource = await readFile(
-  path.join(projectRoot, 'app', 'SoftDiplomacyContext.tsx'),
-  'utf8',
-);
-const requiredContextPages = [
-  'Buildings',
-  'Controls',
-  'Gold',
-  'Trade',
-  'Port',
-  'Railroad',
-  'Train',
-  'Factory',
-  'Trade_Ship',
-  'Warship',
-  'Transport_Ship',
-  'Troops',
-  'Maps',
-  'SAM_Launcher',
-  'Missile_Silo',
-  'Nuke',
-  'Atom_Bomb',
-  'Hydrogen_Bomb',
-  'MIRV',
-];
-for (const slug of requiredContextPages) {
-  if (!contextSource.includes(slug)) {
-    throw new Error(`Missing SoftDiplomacy context coverage for ${slug}`);
+// Base-game copy added by the presentation must be traceable to the wiki,
+// independently of preserving the imported article files.
+const canonicalText = (value) => plainText(value)
+  .replace(/&nbsp;/g, ' ')
+  .replace(/\s+([.,:;!?])/g, '$1')
+  .replace(/\s+/g, ' ').trim();
+let citedPassages = 0;
+for (const topic of CATEGORY_TOPICS.filter((entry) => !entry.air)) {
+  if (topic.wikiSources?.length !== 4 || !topic.principleSource) {
+    throw new Error(`Missing official citations for base animation: ${topic.slug}`);
+  }
+  const passages = topic.captions.map((caption, i) => [caption, topic.wikiSources[i]]);
+  passages.push([topic.principle, topic.principleSource]);
+  for (const [excerpt, [slug, section]] of passages) {
+    const source = await loadGeneratedPage(slug);
+    if (!officialSlugs.has(slug) || source.softDiplomacy) {
+      throw new Error(`Base animation ${topic.slug} cites custom or missing page ${slug}`);
+    }
+    if (!canonicalText(source.html).includes(canonicalText(excerpt))) {
+      throw new Error(`Unverified base animation passage in ${topic.slug}: ${excerpt}`);
+    }
+    if (section && !headingIds(source.html).includes(section)) {
+      throw new Error(`Broken citation section: ${slug}#${section}`);
+    }
+    citedPassages++;
   }
 }
-
-for (const slug of staleOfficialSlugs) {
-  if (!contextSource.includes(slug)) {
-    throw new Error(
-      `Stale official article has no current SoftDiplomacy context: ${slug}`,
-    );
-  }
+const articleSource = await readFile(path.join(projectRoot, 'app', 'WikiApp.tsx'), 'utf8');
+if (articleSource.includes('className="legacy-source"')) {
+  throw new Error('Original articles must stay visible, including source warnings.');
 }
-
-for (const fact of [
-  'The air layer is live—not planned.',
-  'Passenger planes are automatic airport traffic',
-  '13 purchasable items · 3 air additions',
-  'Fighter jets do not intercept missiles',
-]) {
-  if (!contextSource.includes(fact)) {
-    throw new Error(`Current-site context is missing required fact: ${fact}`);
+const sourcePosition = articleSource.indexOf('id="article-text"');
+const supplementPosition = articleSource.indexOf('<SoftDiplomacyContext slug={slug} />');
+if (sourcePosition < 0 || supplementPosition < sourcePosition) {
+  throw new Error('Air supplements must follow the original article, not replace it.');
+}
+const allowedCustomSlugs = new Set([
+  'SoftDiplomacy', 'Air_Units', 'Airport_SoftDiplomacy', 'Passenger_Plane',
+  'Fighter_Jet', 'Attack_Helicopter', 'Base_Mechanics_Parity', 'Update_Status',
+]);
+for (const entry of index.filter((entry) => entry.softDiplomacy)) {
+  if (!allowedCustomSlugs.has(entry.slug)) {
+    throw new Error(`Undocumented custom page outside the air expansion: ${entry.slug}`);
   }
 }
 
@@ -390,5 +387,5 @@ if (officialIndexCount !== officialPages.length) {
 }
 
 console.log(
-  `Verified ${officialPages.length} exact official pages, ${referencedImages} image references, ${localImageFiles} non-empty local images, current context for ${requiredContextPages.length} affected articles, archived handling for ${staleOfficialSlugs.length} stale source articles, and complete naval-twin coverage for 4 air articles.`,
+  `Verified ${officialPages.length} exact official pages, ${referencedImages} image references, ${localImageFiles} non-empty local images, ${citedPassages} source-exact base animation passages, visible original articles, and complete naval-twin coverage for 4 air articles.`,
 );

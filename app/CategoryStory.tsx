@@ -5,7 +5,12 @@ import {
   CATEGORY_MOTION_QUERY, CATEGORY_STEP_STOPS, CATEGORY_TOPICS,
   categoryScrollProgress, categorySegment, categoryState,
 } from './categoryMotion';
-import type { CategoryTopic } from './categoryMotion';
+import type { CategoryTopic, WikiCitation } from './categoryMotion';
+
+function SourceLink({ source }: { source: WikiCitation }) {
+  const [slug, section] = source;
+  return <a href={`https://openfront.wiki/${encodeURIComponent(slug)}${section ? `#${encodeURIComponent(section)}` : ''}`} target="_blank" rel="noreferrer">OpenFront wiki · {slug.replaceAll('_', ' ')}{section ? ` / ${section.replaceAll('_', ' ')}` : ''} ↗</a>;
+}
 
 type Point = { x: number; y: number };
 
@@ -131,7 +136,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
       </g>
       <circle className="category-impact" cx="620" cy="180" r={10 + state.impact * 45} opacity={progress >= 0.73 ? 1 - state.impact : 0} />
       <g className="category-reload" transform={`translate(${fighterX} 180)`} opacity={state.engaging ? 1 : 0}><circle r="32" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - state.interaction * 100} /></g>
-      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.phase === 3 ? 'THREAT CLEARED · RETURN TO THE ORDER' : 'DETECT → HOLD RANGE → FIRE A SHELL'}</text>
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.phase === 3 ? 'THREAT CLEARED · RETURN TO PATROL' : 'DETECT → ENGAGE → FIRE A SHELL'}</text>
     </>}
 
     {topic.scene === 'landing' && <>
@@ -145,7 +150,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
         {state.descent.map((descent, index) => <Trooper key={index} x={580 + index * 18 * descent + state.groundAdvance * 48} y={air ? 117 + descent * 103 : 220} opacity={air ? (descent > 0 ? 1 : 0) : descent} />)}
         <path className="category-ground-arrow" d={`M 622 242 H ${622 + state.groundAdvance * 75}`} opacity={state.groundAdvance} />
       </g>
-      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.groundAdvance > 0 ? 'PAYLOAD DELIVERED → GROUND ATTACK' : 'TROOPS REMAIN IN TRANSIT UNTIL ARRIVAL'}</text>
+      <text className="category-diagram-note" x="400" y="285" textAnchor="middle">{state.groundAdvance > 0 ? 'ARRIVAL → RELEASE TROOPS' : 'TRANSPORT TROOPS TO THE DESTINATION'}</text>
     </>}
 
     {topic.scene === 'rail' && <>
@@ -184,7 +189,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
         </g>
         <circle className="category-range" r={94 + 29 * state.outcome} opacity={state.outcome} />
       </g>
-      <g className="category-validation" opacity={state.prepare} transform="translate(390 48)"><rect x="-78" y="-16" width="156" height="32" rx="16" /><text y="5" textAnchor="middle">OWNED LAND ✓</text></g>
+      <g className="category-validation" opacity={state.prepare} transform="translate(390 48)"><rect x="-78" y="-16" width="156" height="32" rx="16" /><text y="5" textAnchor="middle">CITY EXAMPLE</text></g>
       <g className="category-gold category-cost" opacity={state.action * (1 - state.interaction)} transform="translate(230 155)"><circle r="23" /><text y="5" textAnchor="middle">−G</text></g>
       <g className="category-meter" opacity={state.outcome}><text x="580" y="130">CAPACITY</text><rect x="580" y="151" width="130" height="16" /><rect className="category-meter-fill" x="580" y="151" width={50 + 80 * state.outcome} height="16" /></g>
       <text className="category-diagram-note" x="400" y="285" textAnchor="middle">CONSTRUCTION → MAXIMUM POPULATION CAPACITY</text>
@@ -218,7 +223,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
           <text x="655" y={y + 5}>{['TRADE', 'PATROL', 'INSERTION'][index]}</text>
         </g>;
       })}
-      <g className="category-validation" opacity={state.outcome} transform="translate(400 278)"><rect x="-142" y="-17" width="284" height="34" rx="17" /><text y="5" textAnchor="middle">BASE SYSTEMS UNCHANGED ✓</text></g>
+      <g className="category-validation" opacity={state.outcome} transform="translate(400 278)"><rect x="-142" y="-17" width="284" height="34" rx="17" /><text y="5" textAnchor="middle">THREE CUSTOM AIR ROLES</text></g>
     </>}
   </svg>;
 }
@@ -300,13 +305,14 @@ function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToA
         <ol className="category-steps" aria-label={`${topic.label} sequence`}>
           {topic.steps.map((step, index) => <li key={step} data-state={index === state.phase ? 'current' : index < state.phase ? 'complete' : 'next'}><button type="button" onClick={() => goToStep(index)} aria-current={index === state.phase ? 'step' : undefined}><span>0{index + 1}</span>{step}</button></li>)}
         </ol>
-        <p className="category-caption">{topic.captions[state.phase]}</p>
+        <p className="category-caption">{topic.wikiSources ? <q>{topic.captions[state.phase]}</q> : topic.captions[state.phase]}</p>
+        {topic.wikiSources && <p className="category-source"><SourceLink source={topic.wikiSources[state.phase]} /></p>}
         <div className="category-intelligence">
           <div><span>{topic.readouts[state.phase][0]}</span><strong>{topic.readouts[state.phase][1]}</strong></div>
-          <p><span>Why it matters</span>{topic.principle}</p>
+          <p><span>{topic.principleSource ? 'From the source' : 'Why it matters'}</span>{topic.principle}{topic.principleSource && <span className="category-source"><SourceLink source={topic.principleSource} /></span>}</p>
         </div>
         <div className="category-timeline" aria-hidden="true"><span style={{ transform: `scaleX(${progress})` }} /></div>
-        <div className="category-story-footer"><span className="category-scroll-hint">Scroll to follow the sequence</span><span className="category-static-hint">Use the steps to explore</span>{linkToArticle ? <a href={`#/article/${topic.slug}`}>Read {topic.label.toLowerCase()} →</a> : <span>Illustration, not a gameplay simulation</span>}</div>
+        <div className="category-story-footer"><span className="category-scroll-hint">Scroll to follow the sequence</span><span className="category-static-hint">Use the steps to explore</span>{linkToArticle ? <a href={`#/article/${topic.slug}`}>Read {topic.label.toLowerCase()} →</a> : <span>{topic.air ? 'Custom air illustration' : 'Wiki-based illustration'} · not a gameplay simulation</span>}</div>
       </div>
     </section>
     <div className="category-story-end" ref={endRef} tabIndex={-1} aria-label="End of animated sequence" />

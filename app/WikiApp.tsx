@@ -11,9 +11,8 @@ import {
 import { flushSync } from 'react-dom';
 import AirFleetStory from './AirFleetStory';
 import CategoryStory, { CategoryAtlas } from './CategoryStory';
-import SoftDiplomacyContext, {
-  sourceNeedsReview,
-} from './SoftDiplomacyContext';
+import SoftDiplomacyContext from './SoftDiplomacyContext';
+import syncRecord from '../public/content/sync.json';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -135,9 +134,11 @@ function Header({ onSearch }: { onSearch: (value: string) => void }) {
 function Shell({
   children,
   index,
+  activeSlug,
 }: {
   children: React.ReactNode;
   index: PageIndex[];
+  activeSlug?: string;
 }) {
   return (
     <div className="page-shell">
@@ -146,19 +147,18 @@ function Shell({
           <p className="eyebrow">Base game</p>
           <ul>
             {PRIMARY_LINKS.map(([label, slug]) => (
-              <li key={slug}><a href={articleHref(slug)}>{label}</a></li>
+              <li key={slug}><a href={articleHref(slug)} aria-current={activeSlug === slug ? 'page' : undefined}>{label}</a></li>
             ))}
           </ul>
           <p className="eyebrow sidebar-air">Air expansion</p>
           <ul>
             {AIR_SLUGS.map((slug) => {
               const page = index.find((item) => item.slug === slug);
-              return <li key={slug}><a href={articleHref(slug)}>{page?.title ?? slug.replaceAll('_', ' ')}</a></li>;
+              return <li key={slug}><a href={articleHref(slug)} aria-current={activeSlug === slug ? 'page' : undefined}>{page?.title ?? slug.replaceAll('_', ' ')}</a></li>;
             })}
           </ul>
           <div className="sync-card">
-            <span className="live-dot" />
-            <p><strong>48-hour sync</strong><br />OpenFront source and wiki monitored.</p>
+            <p><strong>Recorded source audit</strong><br /><a href={articleHref('Update_Status')}>{syncRecord.auditedAt} · View record →</a></p>
           </div>
         </nav>
       </aside>
@@ -283,7 +283,6 @@ function CampaignStory() {
             <div className="command-map-texture" />
             <div className="command-grid" />
             <svg className="campaign-routes" viewBox="0 0 1000 560">
-              <path className="route route-rail" d="M 80 440 C 190 410 245 380 305 368" />
               <path ref={tradePathRef} className="route route-trade" pathLength="100" d="M 280 375 Q 540 92 790 174" />
               <path ref={fighterPathRef} className="route route-fighter" pathLength="100" d="M 840 405 Q 760 315 690 270" />
               <path ref={helicopterPathRef} className="route route-helicopter" pathLength="100" d="M 480 430 Q 310 310 180 198" />
@@ -311,18 +310,17 @@ function CampaignStory() {
               <path ref={helicopterRopeRef} className="campaign-deployment-rope" d="M 180 210 V 210" />
               {[0, 1, 2].map((troop) => <g key={troop} ref={(node) => { helicopterTroopRefs.current[troop] = node; }} className="campaign-deployed-troop" transform="translate(180 220)"><circle cy="-5" r="3" /><path d="M 0 -2 V 7 M -5 1 H 5 M 0 7 L -5 14 M 0 7 L 5 14" /></g>)}
             </svg>
-            <span className="map-node node-city"><i>▦</i><small>CAPITAL</small></span>
             <span className="map-node node-airport"><i>◆</i><small>AIRPORT</small></span>
-            <span className="map-node node-port"><i>●</i><small>PORT</small></span>
+            <span className="map-node node-port"><i>◆</i><small>AIRPORT</small></span>
             <span className="map-node node-target"><i>×</i><small>HOSTILE</small></span>
             <span className="impact-pulse" />
-            <div className="campaign-map-label"><span>WORLD / LIVE</span><strong>THEATER 01</strong></div>
+            <div className="campaign-map-label"><span>ILLUSTRATIVE / NOT TO SCALE</span><strong>AIR OPERATIONS</strong></div>
           </div>
           <div className="map-shadow" />
         </div>
         <div className="campaign-telemetry" aria-hidden="true">
-          <span>OPENFRONT SYSTEM</span>
-          <span className="telemetry-state telemetry-state-0"><b>FOUNDATION</b><i>Condition: original systems stay authoritative</i><em>Result: air power adds choices without replacing the base loop</em></span>
+          <span>SOFTDIPLOMACY AIR LAYER</span>
+          <span className="telemetry-state telemetry-state-0"><b>FOUNDATION</b><i>OpenFront references and air supplements</i><em>Read the source; explore the custom aircraft separately</em></span>
           <span className="telemetry-state telemetry-state-1"><b>AIR TRADE</b><i>Condition: eligible active airports</i><em>Result: gold is paid only after arrival</em></span>
           <span className="telemetry-state telemetry-state-2"><b>INTERCEPT</b><i>Condition: a valid hostile aircraft enters range</i><em>Result: fire a shell, confirm the hit, resume patrol</em></span>
           <span className="telemetry-state telemetry-state-3"><b>INSERTION</b><i>Condition: paid launch and real troop payload</i><em>Result: carrier is consumed; land combat begins</em></span>
@@ -333,20 +331,20 @@ function CampaignStory() {
       <div className="campaign-steps">
         <article className="campaign-step">
           <span>01 / TERRITORY</span>
-          <h2>Build on the rules that already work.</h2>
-          <p>OpenFront’s land, economy, rail, port, combat, and diplomacy systems stay authoritative. Air power starts from that same foundation.</p>
-          <a href={articleHref('Base_Mechanics_Parity')}>Review base parity →</a>
+          <h2>The reference. The expansion.</h2>
+          <p>Read the original OpenFront wiki articles, then explore the separate documentation for SoftDiplomacy’s custom aircraft and airports.</p>
+          <a href="#/all">Browse the reference →</a>
         </article>
         <article className="campaign-step">
           <span>02 / CONNECT</span>
           <h2>Link the airport. Open the route.</h2>
-          <p>Rails connect to airports as they do to ports. Passenger planes then carry trade between airports at 1.2× trade-ship speed.</p>
+          <p>Passenger planes carry trade between eligible airports at 1.2× trade-ship speed. Airports can also join rail networks; a railway is not needed for air trade.</p>
           <a href={articleHref('Passenger_Plane')}>Passenger plane →</a>
         </article>
         <article className="campaign-step">
           <span>03 / PROTECT</span>
           <h2>Control the sky with familiar combat.</h2>
-          <p>Fighter jets inherit the warship model—health, levels, range, targeting, fire rhythm, and capture rules—with the documented air adjustment.</p>
+          <p>Fighter jets use warship-inspired health, levels, range, and shell combat. Their air targeting and capture rules have documented differences.</p>
           <a href={articleHref('Fighter_Jet')}>Fighter jet →</a>
         </article>
         <article className="campaign-step">
@@ -399,7 +397,7 @@ function Home({ index }: { index: PageIndex[] }) {
           <span className="line-three" />
         </div>
         <div className="hero-copy">
-          <p className="status-pill"><span /> Community project · current audit</p>
+          <p className="status-pill"><span /> Independent wiki · air expansion</p>
           <h1>Command the map.<br /><em>Own the sky.</em></h1>
           <p className="hero-lede">
             The OpenFront field manual, expanded for SoftDiplomacy’s airports,
@@ -425,9 +423,9 @@ function Home({ index }: { index: PageIndex[] }) {
       <CampaignStory />
 
       <section className="mission-strip home-scroll-reveal">
-        <div><span>01</span><p><strong>Same foundation</strong>Original OpenFront systems remain the baseline.</p></div>
+        <div><span>01</span><p><strong>Original reference</strong>OpenFront articles and images, kept intact.</p></div>
         <div><span>02</span><p><strong>Air twins</strong>Each aircraft follows its matching naval role.</p></div>
-        <div><span>03</span><p><strong>Verified regularly</strong>Source, wiki, tests, and builds checked every 48 hours.</p></div>
+        <div><span>03</span><p><strong>Traceable sources</strong>Base-game explanations link to the OpenFront wiki.</p></div>
       </section>
 
       <Shell index={index}>
@@ -437,7 +435,7 @@ function Home({ index }: { index: PageIndex[] }) {
 
           <section className="parity-panel home-scroll-reveal">
             <div><p className="eyebrow">Design rule</p><h2>Additive, not disruptive.</h2></div>
-            <p>Existing OpenFront mechanics stay authoritative. Airports and aircraft are added beside ports and ships, with explicit parity tests protecting the base systems from unintended changes.</p>
+            <p>The design goal is to add airports and aircraft alongside the naval game. Original wiki material and custom air documentation are kept separate so you can see which rules belong to which project.</p>
             <a href={articleHref('Base_Mechanics_Parity')}>Read the parity policy →</a>
           </section>
         </div>
@@ -583,10 +581,6 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
     () => (page ? headingsFromHtml(page.html) : []),
     [page],
   );
-  const legacySourceNeedsReview = useMemo(
-    () => Boolean(page && !page.softDiplomacy && sourceNeedsReview(page.html)),
-    [page],
-  );
 
   useEffect(() => {
     const article = articleRef.current;
@@ -679,7 +673,7 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
   }
 
   return (
-    <Shell index={index}>
+    <Shell index={index} activeSlug={slug}>
       <main className={`content-pane article-layout${page.softDiplomacy ? ' article-layout-air' : ''}`}>
         <article ref={articleRef} className="wiki-article">
           <div className="article-reading-progress" aria-hidden="true"><span /></div>
@@ -690,25 +684,16 @@ function Article({ index, slug, section }: { index: PageIndex[]; slug: string; s
           </div>
           {page.cats?.length > 0 && <div className="tag-row">{page.cats.filter((cat) => !/stub|broken|all pages/i.test(cat)).slice(0, 6).map((cat) => <span key={cat}>{cat}</span>)}</div>}
           <div className="rule" />
+          <div className={`source-provenance${page.softDiplomacy ? ' source-provenance-air' : ''}`}>
+            <div><strong>{page.softDiplomacy ? 'Custom air documentation' : 'Original OpenFront wiki'}</strong><p>{page.softDiplomacy ? 'SoftDiplomacy additions, documented separately from the base game.' : 'Original text and images are preserved below, including any source warnings. Air additions are labeled separately.'}</p></div>
+            <nav aria-label="Article sources">
+              {!page.softDiplomacy && <a href={`https://openfront.wiki/${page.slug}`} target="_blank" rel="noreferrer">Read original ↗</a>}
+              <a href={articleSectionHref(slug, 'article-text')}>Skip to article ↓</a>
+            </nav>
+          </div>
           <CategoryStory slug={slug} />
+          <div id="article-text" className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
           {!page.softDiplomacy && <SoftDiplomacyContext slug={slug} />}
-          {legacySourceNeedsReview ? (
-            <details className="legacy-source">
-              <summary>
-                <span>Original OpenFront source article</span>
-                <strong>Archived reference · the source marks this page as incomplete or outdated</strong>
-              </summary>
-              <div className="legacy-source-note">
-                The complete upstream article and its original images are preserved below for source fidelity. Use the current SoftDiplomacy section above for live air-unit information.
-              </div>
-              <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
-            </details>
-          ) : (
-            <>
-              {!page.softDiplomacy && <div className="official-source-label"><span>OPENFRONT SOURCE</span><p>Official article mirrored from the current community-wiki source.</p></div>}
-              <div className="wiki-content" onClick={interceptLinks} dangerouslySetInnerHTML={{ __html: page.html }} />
-            </>
-          )}
           {slug === 'Air_Units' && <AirTopicDeck />}
           <footer className="article-license">
             {page.source === 'liquipedia' ? (

@@ -15,10 +15,10 @@ const aircraft = [
   },
   {
     slug: 'Fighter_Jet', name: 'Fighter jet', role: 'Combat', kind: 'fighter',
-    description: 'The air twin of a warship: pentagon marker, matching range, health, levels, fire rhythm, targeting, and capture behavior.',
+    description: 'A warship-inspired fighter: pentagon marker, shared health and fire values, with air-specific targeting, capture, and airport support.',
     stats: [['Naval twin', 'Warship'], ['Speed', '1.2×'], ['Role', 'Combat']],
     doctrine: ['Required first', 'An active owned airport and a valid hostile aircraft'],
-    consequence: ['Control means', 'Holding range, firing a shell, then returning to patrol or repair'],
+    consequence: ['Control means', 'Engaging within range, firing shells, and returning to patrol or repair'],
     route: 'M 130 230 C 330 230 500 170 740 170',
     points: '17,0 5,15 -14,9 -14,-9 5,-15',
   },

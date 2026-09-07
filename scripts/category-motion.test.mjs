@@ -12,8 +12,12 @@ test('every main sidebar topic has an animation and a real article', () => {
     assert.equal(topic.steps.length, 4);
     assert.equal(topic.captions.length, 4);
     assert.equal(topic.readouts.length, 4);
-    assert.ok(topic.principle.length > 70);
-    topic.captions.forEach((caption) => assert.ok(caption.length > 40));
+    assert.ok(topic.principle.length > 0);
+    topic.captions.forEach((caption) => assert.ok(caption.length > 0));
+    if (!topic.air) {
+      assert.equal(topic.wikiSources.length, 4);
+      assert.ok(topic.principleSource);
+    }
   }
   assert.equal(new Set(CATEGORY_TOPICS.map((topic) => topic.scene)).size, 8);
 });
@@ -108,7 +112,10 @@ test('integration leaves original HTML intact and adds both home and article seq
   assert.ok(fleet.includes('fleet-doctrine'));
   assert.ok(fleet.includes('Required first'));
   assert.ok(fleet.includes('Mission ends when'));
-  assert.ok(wiki.includes('Condition: original systems stay authoritative'));
+  assert.ok(wiki.includes('OpenFront references and air supplements'));
+  assert.ok(!wiki.includes('className="legacy-source"'));
+  assert.ok(wiki.indexOf('id="article-text"') < wiki.indexOf('<SoftDiplomacyContext slug={slug} />'));
+  assert.ok(component.includes('<SourceLink source={topic.wikiSources[state.phase]} />'));
   assert.ok(wiki.includes('Result: gold is paid only after arrival'));
   assert.ok(wiki.includes('campaign-target-lock'));
   assert.ok(wiki.includes('fighterShellRef'));
