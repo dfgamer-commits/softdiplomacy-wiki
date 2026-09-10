@@ -275,7 +275,7 @@ export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: bo
   // A prefiltered light environment makes bevels, glass and metal legible;
   // it does not add a decorative background or a network-loaded texture.
   const studio = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
-  const reflections = pmrem.fromScene(studio, 0.06); model.scene.environment = reflections.texture; model.scene.environmentIntensity = 0.65;
+  const reflections = pmrem.fromScene(studio, 0.02); model.scene.environment = reflections.texture; model.scene.environmentIntensity = 0.65;
   studio.dispose(); pmrem.dispose();
   const labels = model.anchors.map(() => { const label = document.createElement('span'); label.className = 'operations-world-label'; host.appendChild(label); return label; });
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100); camera.position.set(9, 12, 15);
