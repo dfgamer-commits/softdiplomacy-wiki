@@ -239,7 +239,7 @@ export default function AirFleetStory() {
 
           <div className="fleet-mission">
             <div className="fleet-mission-label"><strong className="fleet-mission-title">{FLEET_MISSIONS[0].title}</strong><span className="fleet-mission-note">{FLEET_MISSIONS[0].note}</span></div>
-            <OperationsViewport kind={(['trade', 'intercept', 'landing'] as const)[currentMotion.active]} progress={currentMotion.flights[currentMotion.active]} air fleet fallback={<div className="fleet-scene" aria-hidden="true">
+            <OperationsViewport playback={player} kind={(['trade', 'intercept', 'landing'] as const)[currentMotion.active]} progress={currentMotion.flights[currentMotion.active]} air fleet fallback={<div className="fleet-scene" aria-hidden="true">
               <div className="fleet-map-texture" />
               <svg className="fleet-routes" viewBox="0 0 1200 350" fill="none">
               {aircraft.map((unit, index) => (

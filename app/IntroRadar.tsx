@@ -59,7 +59,7 @@ export default function IntroRadar() {
     event.currentTarget.style.setProperty('--radar-y', `${4 - (event.clientY - box.top) / box.height * 8}deg`);
   }} onPointerLeave={(event) => { event.currentTarget.style.setProperty('--radar-x', '0deg'); event.currentTarget.style.setProperty('--radar-y', '0deg'); }}>
     <div className="intro-radar-surface">
-      <OperationsViewport kind={(['trade', 'intercept', 'landing'] as const)[mission.active]} progress={mission.flights[mission.active]} air fleet fallback={<svg viewBox="0 0 500 500" role="group" aria-label="Explore the three air units">
+      <OperationsViewport playback={player} kind={(['trade', 'intercept', 'landing'] as const)[mission.active]} progress={mission.flights[mission.active]} air fleet fallback={<svg viewBox="0 0 500 500" role="group" aria-label="Explore the three air units">
         <defs><radialGradient id="intro-radar-light"><stop stopColor="#154856" /><stop offset="1" stopColor="#081923" /></radialGradient></defs>
         <circle className="intro-radar-disc" cx="250" cy="250" r="225" fill="url(#intro-radar-light)" />
         {[75, 145, 211, 230].map((radius) => <circle key={radius} className="intro-radar-ring" cx="250" cy="250" r={radius} />)}

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { immersivePose } from './immersiveCamera.ts';
 
 export type WorldKind = 'trade' | 'intercept' | 'landing' | 'rail' | 'territory' | 'construction' | 'economy' | 'network';
 export type WorldState = { flight: number; prepare: number; interact: number; outcome: number; shot: number; shotVisible: boolean; impact: number; targetVisible: boolean; engaging: boolean; rope: number; descent: number[]; advance: number; carrierOpacity: number; connection?: number; timeline?: number; enemyApproach?: number };
-export type CameraMode = 'cinematic' | 'orbit' | 'top';
+export type CameraMode = 'ride' | 'cinematic' | 'orbit' | 'top';
 const cyan = 0x79e9f2, amber = 0xffcd7e, red = 0xff7f70;
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
@@ -21,6 +22,9 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   sun.shadow.normalBias = 0.03; scene.add(sun);
   const fill = new THREE.PointLight(cyan, 22, 22); fill.position.set(2, 4, -5); scene.add(fill);
   const root = new THREE.Group(); scene.add(root);
+  const environment = new THREE.Group(); scene.add(environment); environment.visible = false;
+  const horizon = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0x112b32, roughness: 1 })); horizon.rotation.x = -Math.PI / 2; horizon.position.y = -0.52; horizon.receiveShadow = true; environment.add(horizon);
+  const farGrid = new THREE.GridHelper(100, 100, 0x2b505c, 0x193943); farGrid.position.y = -0.5; environment.add(farGrid);
   const surface = new THREE.MeshStandardMaterial({ color: 0x173a49, roughness: 0.67, metalness: 0.35 });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(18, 0.42, 11), surface); floor.position.y = -0.28; floor.receiveShadow = true; root.add(floor);
   const rim = new THREE.LineSegments(new THREE.EdgesGeometry(floor.geometry), new THREE.LineBasicMaterial({ color: 0x527788 })); rim.position.copy(floor.position); root.add(rim);
@@ -232,7 +236,11 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
     geometries.forEach((g) => g.dispose()); materials.forEach((m) => m.dispose());
     sun.shadow.map?.dispose(); scene.clear();
   }
-  return { scene, root, mapMaterial, setState, dispose, curve, railCurve, train, moving, enemy, shell, troops, objects, trail, anchors, focus, coins, partnerCoins, reserve, payload, couplers, railGroup, capacity, radius, airportPayout, patrol };
+  function viewpoint() {
+    const subject = kind === 'rail' ? train[0] : kind === 'network' ? network[1].unit : ['trade', 'landing', 'intercept'].includes(kind) ? moving : troopsInCombat[1];
+    return { subject: ['construction', 'economy'].includes(kind) ? v(0, 0.6, 0) : subject.position, heading: subject.rotation.y, attention: anchors[2].position };
+  }
+  return { scene, root, mapMaterial, setState, dispose, curve, railCurve, train, moving, enemy, shell, troops, objects, trail, anchors, focus, coins, partnerCoins, reserve, payload, couplers, railGroup, capacity, radius, airportPayout, patrol, environment, viewpoint };
 }
 
 export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: boolean, onInspect: (label: string) => void, onFailure?: () => void) {
@@ -245,7 +253,7 @@ export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: bo
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100); camera.position.set(9, 12, 15);
   const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = false; controls.enablePan = false; controls.enableZoom = false; controls.minPolarAngle = 0.15; controls.maxPolarAngle = 1.35; controls.enabled = false;
   renderer.domElement.style.touchAction = 'pan-y';
-  let mode: CameraMode = 'cinematic', zoom = 1, disposed = false, visible = true, progress = 0, contextLost = false;
+  let mode: CameraMode = 'cinematic', zoom = 1, disposed = false, visible = true, progress = 0, contextLost = false, calm = false, lookX = 0, lookY = 0;
   const draw = () => { if (!disposed && !contextLost && visible && !document.hidden) {
     renderer.render(model.scene, camera);
     const boxes: Array<{ x: number; y: number; width: number; height: number }> = [];
@@ -256,7 +264,7 @@ export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: bo
       const x = Math.max(width / 2 + 8, Math.min(host.clientWidth - width / 2 - 8, (point.x * 0.5 + 0.5) * host.clientWidth));
       let y = (0.5 - point.y * 0.5) * host.clientHeight;
       for (const box of boxes) if (Math.abs(x - box.x) < (width + box.width) / 2 + 5 && Math.abs(y - box.y) < (height + box.height) / 2 + 5) y = box.y + box.height + 8;
-      label.hidden = point.z < -1 || point.z > 1 || y < 55 || y > host.clientHeight - 130;
+      label.hidden = point.z < -1 || point.z > 1 || Math.abs(point.x) > 0.95 || y < 55 || y > host.clientHeight - 130;
       label.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
       if (!label.hidden) boxes.push({ x, y, width, height });
     });
@@ -267,6 +275,17 @@ export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: bo
   const resize = () => { const w = Math.max(1, host.clientWidth), h = Math.max(1, host.clientHeight); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); frameCamera(); draw(); };
   function frameCamera() {
     if (mode === 'orbit') return;
+    model.environment.visible = mode === 'ride' && !calm;
+    if (calm && mode !== 'top') { camera.position.set(0, 17, 15); controls.target.set(0, 0.4, 0); camera.fov = 45; camera.updateProjectionMatrix(); camera.lookAt(controls.target); return; }
+    (model.scene.fog as THREE.Fog).near = mode === 'ride' ? 12 : 25;
+    (model.scene.fog as THREE.Fog).far = mode === 'ride' ? 45 : 65;
+    if (mode === 'ride') {
+      const pose = immersivePose({ kind, air, progress, ...model.viewpoint(), lookX, lookY, aspect: camera.aspect, calm });
+      camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+      controls.target.set(pose.target.x, pose.target.y, pose.target.z);
+      camera.fov = pose.fov; camera.updateProjectionMatrix(); camera.lookAt(controls.target); return;
+    }
+    camera.fov = 42; camera.updateProjectionMatrix();
     const aspectAdjust = camera.aspect < 1.2 ? 1.2 / Math.max(0.5, camera.aspect) : 1;
     const distance = zoom * Math.min(1.6, aspectAdjust);
     if (mode === 'top') { camera.position.set(0, 22 * distance, 0.01); controls.target.set(0, 0, 0); }
@@ -274,15 +293,16 @@ export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: bo
     camera.lookAt(controls.target);
   }
   const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2();
-  const inspect = (event: PointerEvent) => { if (mode === 'orbit' && event.buttons) return; const box = renderer.domElement.getBoundingClientRect(); pointer.set((event.clientX - box.left) / box.width * 2 - 1, -(event.clientY - box.top) / box.height * 2 + 1); ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(model.objects).find((item) => { let node: THREE.Object3D | null = item.object; while (node) { if (!node.visible) return false; node = node.parent; } return true; }); onInspect(hit?.object.userData.label ?? ''); };
-  const leave = () => onInspect('');
+  const inspect = (event: PointerEvent) => { if (mode === 'orbit' && event.buttons) return; const box = renderer.domElement.getBoundingClientRect(); pointer.set((event.clientX - box.left) / box.width * 2 - 1, -(event.clientY - box.top) / box.height * 2 + 1); if (mode === 'ride' && !calm && event.pointerType === 'mouse') { lookX = pointer.x; lookY = pointer.y; frameCamera(); draw(); } ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(model.objects).find((item) => { let node: THREE.Object3D | null = item.object; while (node) { if (!node.visible) return false; node = node.parent; } return true; }); onInspect(hit?.object.userData.label ?? ''); };
+  const leave = () => { onInspect(''); lookX = lookY = 0; if (mode === 'ride') { frameCamera(); draw(); } };
   renderer.domElement.addEventListener('pointermove', inspect); renderer.domElement.addEventListener('pointerleave', leave);
   const resizeObserver = new ResizeObserver(resize); resizeObserver.observe(host);
   const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) draw(); }); observer.observe(host);
   document.addEventListener('visibilitychange', draw); resize();
   return {
     update(state: WorldState, nextProgress: number) { progress = clamp(nextProgress); model.setState(state); frameCamera(); draw(); },
-    camera(next: CameraMode) { mode = next; controls.enabled = next === 'orbit'; renderer.domElement.style.touchAction = next === 'orbit' ? 'none' : 'pan-y'; frameCamera(); controls.update(); draw(); },
+    camera(next: CameraMode) { mode = next; controls.enabled = next === 'orbit'; renderer.domElement.style.touchAction = next === 'orbit' ? 'none' : 'pan-y'; model.environment.visible = next === 'ride' && !calm; frameCamera(); if (next === 'orbit') controls.update(); draw(); },
+    comfort(value: boolean) { calm = value; lookX = lookY = 0; frameCamera(); draw(); },
     zoom(delta: number) { zoom = Math.max(0.65, Math.min(1.5, zoom + delta)); if (mode === 'orbit') { camera.position.sub(controls.target).multiplyScalar(delta > 0 ? 1.12 : 0.89).clampLength(7, 36).add(controls.target); } else frameCamera(); draw(); },
     rotate(delta: number) { mode = 'orbit'; controls.enabled = true; const offset = camera.position.clone().sub(controls.target); offset.applyAxisAngle(v(0, 1, 0), delta); camera.position.copy(controls.target).add(offset); camera.lookAt(controls.target); controls.update(); draw(); },
     focus(id: number | null) { model.focus(id); labels.forEach((label, index) => label.classList.toggle('is-selected', id === index)); draw(); },

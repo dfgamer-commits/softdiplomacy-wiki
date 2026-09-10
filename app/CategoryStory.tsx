@@ -328,7 +328,7 @@ function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToA
           const rect = event.currentTarget.getBoundingClientRect();
           event.currentTarget.style.setProperty('--inspect-x', `${100 * (event.clientX - rect.left) / rect.width}%`);
           event.currentTarget.style.setProperty('--inspect-y', `${100 * (event.clientY - rect.top) / rect.height}%`);
-        }}><OperationsViewport key={topic.slug} kind={topic.scene} progress={progress} air={Boolean(topic.air)} fallback={<CategoryDiagram topic={topic} progress={progress} />} /></div>
+        }}><OperationsViewport playback={player} key={topic.slug} kind={topic.scene} progress={progress} air={Boolean(topic.air)} fallback={<CategoryDiagram topic={topic} progress={progress} />} /></div>
         <StoryControls player={player} label={topic.label} phase={topic.steps[state.phase]} />
         <ol className="category-steps" aria-label={`${topic.label} sequence`} onPointerEnter={() => setInspecting(true)} onPointerLeave={() => setInspecting(false)} onFocus={() => setInspecting(true)} onBlur={() => setInspecting(false)}>
           {topic.steps.map((step, index) => <li key={step} data-state={index === state.phase ? 'current' : index < state.phase ? 'complete' : 'next'}><button type="button" onClick={() => goToStep(index)} aria-current={index === state.phase ? 'step' : undefined}><span>0{index + 1}</span>{step}</button></li>)}
