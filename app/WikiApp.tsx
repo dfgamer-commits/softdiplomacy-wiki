@@ -332,12 +332,14 @@ function CampaignStory() {
                 <path className="marker-trail" d="M -42 0 H -13" />
                 <polygon className="marker-body" points="13,0 -10,10 -10,-10" />
               </g>
-              <g className="campaign-trade-arrival" transform="translate(790 174)"><circle r="25" /><circle r="34" /><text y="-42" textAnchor="middle">+ GOLD</text></g>
+              {[{ x: 280, y: 375 }, { x: 790, y: 174 }].map(({ x, y }) => <g key={x} className="campaign-trade-arrival" transform={`translate(${x} ${y})`}><text y="-42" textAnchor="middle">+ GOLD</text></g>)}
               <DockPulse x={790} y={174} progress={categorySegment(mapMissions[0], 0.8, 0.92)} />
               <DockPulse x={790} y={174} progress={categorySegment(mapMissions[0], 0.92, 1)} gold />
               <ImpactBurst x={570} y={210} progress={fleetMission(1, mapMissions[1]).impact} />
               <LandingField x={180} y={280} progress={categorySegment(mapMissions[2], 0.6, 0.98)} />
               <g className="campaign-target-lock" transform="translate(570 210)"><path d="M -28 -16 V -28 H -16 M 16 -28 H 28 V -16 M 28 16 V 28 H 16 M -16 28 H -28 V 16" /><circle r="20" /></g>
+              <g transform="translate(570 210)" opacity={fleetMission(1, mapMissions[1]).targetOpacity}><polygon points="12,0 -10,9 -10,-9" fill="#ff7f70" /><text y="35" textAnchor="middle" fill="#ffaaa0" fontSize="14">HOSTILE HELICOPTER</text></g>
+              {[{ x: 840, y: 405, label: 'FIGHTER SUPPORT' }, { x: 480, y: 430, label: 'TROOP LAUNCH' }].map(({ x, y, label }) => <g key={x} transform={`translate(${x} ${y})`}><path d="M 0 -13 L 13 0 L 0 13 L -13 0 Z" fill="#173b43" stroke="#79e9f2" /><text y="33" textAnchor="middle" fill="#aad5dc" fontSize="14">{label}</text></g>)}
               <g ref={fighterShellRef} className="campaign-fighter-shell" transform="translate(690 270) rotate(-153.4)"><path d="M -24 0 H -7" /><polygon points="10,0 2,-4 -7,-3 -7,3 2,4" /></g>
               <circle className="campaign-fighter-impact" cx="570" cy="210" r="34" />
               <path ref={helicopterRopeRef} className="campaign-deployment-rope" d="M 180 210 V 210" />

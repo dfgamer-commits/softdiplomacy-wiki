@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { CameraMode, WorldKind, WorldState, createOperationWorld } from './operationWorld';
-import { categoryState } from './categoryMotion';
+import { CATEGORY_TOPICS, categoryState } from './categoryMotion';
 import { fleetMission } from './airFleetMotion';
+import { applyOperationTiming } from './operationTiming';
 
 export default function OperationsViewport({ kind, progress, air = false, fleet = false, fallback }: { kind: WorldKind; progress: number; air?: boolean; fleet?: boolean; fallback: ReactNode }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -14,6 +15,14 @@ export default function OperationsViewport({ kind, progress, air = false, fleet 
   const [camera, setCamera] = useState<CameraMode>('cinematic');
   const cameraRef = useRef<CameraMode>('cinematic');
   const [inspected, setInspected] = useState('');
+  const [detail, setDetail] = useState<number | null>(null);
+  const topic = CATEGORY_TOPICS.find((entry) => entry.scene === kind && Boolean(entry.air) === air);
+  const phase = fleet ? fleetMission(kind === 'intercept' ? 1 : kind === 'landing' ? 2 : 0, progress).phase : categoryState(progress).phase;
+  const details = kind === 'trade' ? ['Origin & eligibility', 'Route & delivery', 'Payment to both owners'] : kind === 'intercept' ? ['Launch support', 'Range & shell', 'Target & result'] : kind === 'landing' ? ['Troop reserve', 'Carried payload', 'Ground handoff'] : kind === 'rail' ? ['Station', 'Track & carriages', 'Connected destination'] : kind === 'territory' ? ['Reserve', 'Committed attack', 'Territory boundary'] : kind === 'network' ? ['Trade', 'Patrol', 'Insertion'] : ['Gold', 'City', 'Capacity'];
+  const detailTopic = kind === 'network' && detail !== null ? CATEGORY_TOPICS.find((entry) => entry.slug === ['Passenger_Plane', 'Fighter_Jet', 'Attack_Helicopter'][detail]) : topic;
+  const detailStep = detail === null ? phase : kind === 'network' ? [3, 2, 3][detail] : kind === 'landing' ? [0, 1, 3][detail] : [0, 2, 3][detail];
+  const citation = detailTopic?.wikiSources?.[detailStep];
+  const selectDetail = (value: number | null) => { setDetail(value); sceneRef.current?.focus(value); };
   const latest = useRef({ progress, kind, air, fleet });
   useEffect(() => { latest.current = { progress, kind, air, fleet }; sceneRef.current?.update(stateFor(kind, progress, fleet), progress); }, [progress, kind, air, fleet]);
   useEffect(() => {
@@ -23,18 +32,18 @@ export default function OperationsViewport({ kind, progress, air = false, fleet 
       if (!entry.isIntersecting || started) return; started = true; setReady(false);
       void import('./operationWorld').then(({ createOperationWorld: create }) => {
         if (disposed) return;
-        try { const scene = create(host, kind, air, setInspected, () => { setReady(false); setFailed(true); }); sceneRef.current = scene; const value = latest.current; scene.update(stateFor(value.kind, value.progress, value.fleet), value.progress); scene.camera(cameraRef.current); setReady(true); }
+        try { const scene = create(host, kind, air, setInspected, () => { setReady(false); setFailed(true); }); sceneRef.current = scene; const value = latest.current; scene.update(stateFor(value.kind, value.progress, value.fleet), value.progress); scene.camera(cameraRef.current); setReady(true); setFailed(false); setDetail(null); }
         catch { setFailed(true); }
       }).catch(() => { if (!disposed) setFailed(true); });
     }, { rootMargin: '160px' }); observer.observe(host);
     return () => { disposed = true; observer.disconnect(); sceneRef.current?.dispose(); sceneRef.current = null; };
   }, [kind, air]);
   const changeCamera = (mode: CameraMode) => { cameraRef.current = mode; setCamera(mode); sceneRef.current?.camera(mode); };
-  return <div className="operations-viewport" data-ready={ready} data-camera={camera}>
+  return <div className="operations-workbench"><div className="operations-viewport" data-ready={ready} data-camera={camera}>
     <div className="operations-canvas" ref={hostRef} aria-hidden="true" />
     <div className="operations-fallback" hidden={ready}>{fallback}</div>
     {ready && <>
-      <div className="operations-corner"><span>OPERATIONS / 3D</span><span>ILLUSTRATIVE · NOT TO SCALE</span></div>
+      <div className="operations-corner"><span>{topic?.steps[phase]}</span><span>SCHEMATIC · NOT TO SCALE</span></div>
       <div className="operations-inspect" aria-live="polite">{inspected || (camera === 'orbit' ? 'Drag to explore the scene' : 'Scroll to advance the operation')}</div>
       <div className="operations-camera" role="group" aria-label="Scene camera">
         <div>{(['cinematic', 'orbit', 'top'] as const).map((mode) => <button type="button" key={mode} aria-pressed={camera === mode} onClick={() => changeCamera(mode)}>{mode === 'cinematic' ? 'Follow' : mode === 'orbit' ? 'Explore 3D' : 'Top view'}</button>)}</div>
@@ -42,10 +51,17 @@ export default function OperationsViewport({ kind, progress, air = false, fleet 
       </div>
     </>}
     {failed && <p className="operations-unavailable">3D is unavailable in this browser. The interactive diagram is shown instead.</p>}
+  </div>
+    <div className="operations-meaning">
+      <div className="operations-key"><span><i className="meaning-owned" />Owned / route</span>{['trade', 'landing', 'economy', 'construction'].includes(kind) && <span><i className="meaning-payload" />{kind === 'landing' ? 'Committed troops' : 'Gold'}</span>}{['intercept', 'territory'].includes(kind) && <span><i className="meaning-hostile" />Hostile / contested</span>}</div>
+      <div className="operations-details" role="group" aria-label="Inspect the meaning of scene details">{details.map((label, index) => <button type="button" key={label} aria-pressed={detail === index} onClick={() => selectDetail(detail === index ? null : index)}><span>0{index + 1}</span>{label}</button>)}</div>
+      {detail !== null && detailTopic && <div className="operations-explanation"><strong>{details[detail]}</strong><p>{detailTopic.captions[detailStep]}</p><a href={citation ? `https://openfront.wiki/${encodeURIComponent(citation[0])}${citation[1] ? `#${encodeURIComponent(citation[1])}` : ''}` : `#/article/${detailTopic.slug}`} {...(citation ? { target: '_blank', rel: 'noreferrer' } : {})}>{citation ? 'Read the original wiki source ↗' : 'Read the air-unit rules →'}</a><button type="button" onClick={() => selectDetail(null)} aria-label="Close scene explanation">Close</button></div>}
+      <p className="operations-scale-note">{kind === 'landing' ? 'Troop markers represent groups, not exact counts. Ropes illustrate the handoff, not a game mechanic.' : kind === 'intercept' ? 'The ring shows targeting range. Scale and timing are illustrative; the projectile is a shell.' : kind === 'trade' || kind === 'economy' || kind === 'construction' ? 'Gold stacks show where money goes, not an exact amount. Timing and scale are illustrative.' : kind === 'territory' ? 'Troop markers represent groups. This example is not a combat calculator.' : 'Position and timing explain the sequence; they are not measured game values.'}</p>
+    </div>
   </div>;
 }
 
 export function stateFor(kind: WorldKind, progress: number, fleet: boolean): WorldState {
-  if (fleet) { const s = fleetMission(kind === 'intercept' ? 1 : kind === 'landing' ? 2 : 0, progress); return { flight: s.flight, prepare: s.readiness, interact: s.weaponCycle, outcome: kind === 'trade' ? s.goldOpacity : kind === 'landing' ? s.troopsOpacity : s.threatCleared, shot: s.projectile, shotVisible: s.projectileOpacity > 0, impact: s.impact, targetVisible: s.targetOpacity > 0.1, engaging: s.inCombat, rope: s.ropeLength, descent: s.rappellers.map((r) => r.descent), advance: s.troopsOpacity, carrierOpacity: s.aircraftOpacity }; }
-  const s = categoryState(progress); return { flight: s.action, prepare: s.prepare, interact: s.interaction, outcome: s.outcome, shot: s.shot, shotVisible: s.shotVisible, impact: s.impact, targetVisible: s.targetVisible, engaging: s.engaging, rope: s.rope, descent: s.descent, advance: s.groundAdvance, carrierOpacity: kind === 'landing' || kind === 'trade' ? 1 - s.outcome : 1 };
+  if (fleet) { const s = fleetMission(kind === 'intercept' ? 1 : kind === 'landing' ? 2 : 0, progress); return applyOperationTiming(kind, { flight: s.flight, prepare: s.readiness, interact: s.weaponCycle, outcome: kind === 'trade' ? s.goldOpacity : kind === 'landing' ? s.troopsOpacity : s.threatCleared, shot: s.projectile, shotVisible: s.projectileOpacity > 0, impact: s.impact, targetVisible: s.targetOpacity > 0.1, engaging: s.inCombat, rope: s.ropeLength, descent: s.rappellers.map((r) => r.descent), advance: s.troopsOpacity, carrierOpacity: s.aircraftOpacity }, progress, true); }
+  const s = categoryState(progress); return applyOperationTiming(kind, { flight: s.action, prepare: s.prepare, interact: s.interaction, outcome: s.outcome, shot: s.shot, shotVisible: s.shotVisible, impact: s.impact, targetVisible: s.targetVisible, engaging: s.engaging, rope: s.rope, descent: s.descent, advance: s.groundAdvance, carrierOpacity: kind === 'landing' || kind === 'trade' ? 1 - s.outcome : 1 }, progress, false);
 }
