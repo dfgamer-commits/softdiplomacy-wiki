@@ -6,6 +6,11 @@ import {
   categoryScrollProgress, categorySegment, categoryState,
 } from './categoryMotion';
 import type { CategoryTopic, WikiCitation } from './categoryMotion';
+import StoryControls, { useStoryPlayer } from './StoryControls';
+import { viewportStoryProgress } from './storyPlayback';
+import { CategoryEffects } from './OperationEffects';
+import { pathTailDistances } from './cinematicMotion';
+import OperationsViewport from './OperationsViewport';
 
 function SourceLink({ source }: { source: WikiCitation }) {
   const [slug, section] = source;
@@ -17,12 +22,27 @@ type Point = { x: number; y: number };
 function Route({ d, progress, air = false, rail = false, trail = true }: { d: string; progress: number; air?: boolean; rail?: boolean; trail?: boolean }) {
   const pathRef = useRef<SVGPathElement>(null);
   const unitRef = useRef<SVGGElement>(null);
+  const wakeRef = useRef<SVGPathElement>(null);
+  const tailRefs = useRef<Array<SVGCircleElement | null>>([]);
   const trainCarRefs = useRef<Array<SVGGElement | null>>([]);
   const trainCouplerRefs = useRef<Array<SVGLineElement | null>>([]);
   useLayoutEffect(() => {
     const path = pathRef.current;
     if (!path) return;
     const length = path.getTotalLength();
+    // A short sampled wake stays on the actual curve, including tight bends.
+    const end = length * progress;
+    const start = Math.max(0, end - 65);
+    const wake = Array.from({ length: 18 }, (_, index) => {
+      const point = path.getPointAtLength(start + (end - start) * index / 17);
+      return `${index ? 'L' : 'M'} ${point.x} ${point.y}`;
+    }).join(' ');
+    wakeRef.current?.setAttribute('d', wake);
+    pathTailDistances(length, progress, 12, 85).forEach((distance, index) => {
+      const point = path.getPointAtLength(distance);
+      tailRefs.current[index]?.setAttribute('cx', String(point.x));
+      tailRefs.current[index]?.setAttribute('cy', String(point.y));
+    });
     const poseAt = (distance: number) => {
       const bounded = Math.min(length, Math.max(0, distance));
       const point = path.getPointAtLength(bounded);
@@ -56,10 +76,13 @@ function Route({ d, progress, air = false, rail = false, trail = true }: { d: st
   }, [d, progress, rail]);
   return <>
     <path className="category-route-base" d={d} />
+    {trail && <path ref={wakeRef} className="category-route-wake" />}
+    {trail && <g className="operation-route-particles" opacity={progress > 0 && progress < 1 ? 1 : 0}>{Array.from({ length: 12 }, (_, index) => <circle key={index} ref={(node) => { tailRefs.current[index] = node; }} r={2.5 - index * 0.12} opacity={0.75 - index * 0.055} />)}</g>}
     <path ref={pathRef} className="category-route-live" d={d} pathLength="100" strokeDasharray="100" strokeDashoffset={100 - progress * 100} opacity={trail ? 1 : 0} />
     {rail ? <g className="category-train">
       {[0, 1].map((index) => <line key={`coupler-${index}`} ref={(node) => { trainCouplerRefs.current[index] = node; }} className="category-train-coupler" />)}
       {[0, 1, 2].map((index) => <g key={`car-${index}`} ref={(node) => { trainCarRefs.current[index] = node; }} className={`category-train-car${index === 0 ? ' category-train-engine' : ''}`}>
+        {index === 0 && <path className="operation-headlamp" d="M 18 -4 L 90 -26 Q 105 0 90 26 L 18 4 Z" />}
         <rect className="category-train-body" x="-14" y="-10" width="28" height="20" rx="4" />
         <path className="category-train-roof" d="M -10 -10 H 10" />
         <rect className="category-train-window" x="-8" y="-6" width="7" height="6" rx="1" />
@@ -74,7 +97,9 @@ function Route({ d, progress, air = false, rail = false, trail = true }: { d: st
 
 function Unit({ air = false, fighter = false }: { air?: boolean; fighter?: boolean }) {
   return <g className="category-unit">
+    <ellipse className="operation-unit-shadow" cx="-7" cy="13" rx="18" ry="6" />
     <circle className="category-unit-halo" r={fighter ? 26 : 20} />
+    <path className="category-unit-heading" d="M 23 -6 L 29 0 L 23 6" />
     {air ? <polygon points={fighter ? '18,0 6,17 -15,10 -15,-10 6,-17' : '17,0 -12,11 -12,-11'} /> : <><circle r={fighter ? 17 : 10} /><circle className="category-unit-inner" r={fighter ? 10 : 4} /></>}
     {fighter && air && <polygon className="category-unit-inner" points="10,0 3,9 -8,5 -8,-5 3,-9" />}
   </g>;
@@ -225,6 +250,7 @@ function CategoryDiagram({ topic, progress }: { topic: CategoryTopic; progress: 
       })}
       <g className="category-validation" opacity={state.outcome} transform="translate(400 278)"><rect x="-142" y="-17" width="284" height="34" rx="17" /><text y="5" textAnchor="middle">THREE CUSTOM AIR ROLES</text></g>
     </>}
+    <CategoryEffects scene={topic.scene} progress={progress} air={air} />
   </svg>;
 }
 
@@ -237,9 +263,10 @@ function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToA
   const rootRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const manualRef = useRef(1);
-  const refreshRef = useRef<() => void>(() => {});
-  const [progress, setProgress] = useState(1);
+  const player = useStoryPlayer(rootRef);
+  const { sample, refreshRef } = player;
+  const progress = player.progress;
+  const [inspecting, setInspecting] = useState(false);
   const id = useId();
   const state = categoryState(progress);
 
@@ -253,8 +280,9 @@ function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToA
     const update = () => {
       frame = 0;
       const pinned = root.classList.contains('category-scroll-enabled');
-      const next = pinned ? categoryScrollProgress(root.getBoundingClientRect().top, root.offsetHeight, stage.offsetHeight, 88) : manualRef.current;
-      setProgress((previous) => Math.abs(next - previous) < 0.0005 ? previous : next);
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const scene = stage.getBoundingClientRect();
+      sample(reduced ? 0 : pinned ? categoryScrollProgress(root.getBoundingClientRect().top, root.offsetHeight, stage.offsetHeight, 88) : viewportStoryProgress(scene.top, scene.height, window.innerHeight));
     };
     const requestUpdate = () => { if (!frame) frame = window.requestAnimationFrame(update); };
     refreshRef.current = requestUpdate;
@@ -281,28 +309,28 @@ function TopicSequence({ topic, linkToArticle }: { topic: CategoryTopic; linkToA
       window.cancelAnimationFrame(frame);
       refreshRef.current = () => {};
     };
-  }, []);
+  }, [sample, refreshRef]);
 
   const goToStep = (step: number) => {
-    const root = rootRef.current;
-    const stage = stageRef.current;
-    if (!root || !stage) return;
-    manualRef.current = CATEGORY_STEP_STOPS[step];
-    if (root.classList.contains('category-scroll-enabled')) {
-      window.scrollTo({ top: window.scrollY + root.getBoundingClientRect().top - 88 + manualRef.current * (root.offsetHeight - stage.offsetHeight), behavior: 'smooth' });
-    } else refreshRef.current();
+    player.seek(CATEGORY_STEP_STOPS[step]);
   };
 
   return <>
-    <section className="category-story" ref={rootRef} aria-labelledby={id}>
+    <section className="category-story" data-inspecting={inspecting} ref={rootRef} aria-labelledby={id}>
       <div className="category-stage" ref={stageRef}>
         <div className="category-story-heading"><p className="eyebrow">{topic.label} / in motion</p><button type="button" className="category-skip" onClick={() => {
           endRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
           endRef.current?.focus({ preventScroll: true });
         }}>Skip animation ↓</button></div>
         <h2 id={id}>{topic.title}</h2>
-        <CategoryDiagram topic={topic} progress={progress} />
-        <ol className="category-steps" aria-label={`${topic.label} sequence`}>
+        <div className="category-diagram-frame" onPointerMove={(event) => {
+          if (event.pointerType !== 'mouse') return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--inspect-x', `${100 * (event.clientX - rect.left) / rect.width}%`);
+          event.currentTarget.style.setProperty('--inspect-y', `${100 * (event.clientY - rect.top) / rect.height}%`);
+        }}><OperationsViewport key={topic.slug} kind={topic.scene} progress={progress} air={Boolean(topic.air)} fallback={<CategoryDiagram topic={topic} progress={progress} />} /></div>
+        <StoryControls player={player} label={topic.label} phase={topic.steps[state.phase]} />
+        <ol className="category-steps" aria-label={`${topic.label} sequence`} onPointerEnter={() => setInspecting(true)} onPointerLeave={() => setInspecting(false)} onFocus={() => setInspecting(true)} onBlur={() => setInspecting(false)}>
           {topic.steps.map((step, index) => <li key={step} data-state={index === state.phase ? 'current' : index < state.phase ? 'complete' : 'next'}><button type="button" onClick={() => goToStep(index)} aria-current={index === state.phase ? 'step' : undefined}><span>0{index + 1}</span>{step}</button></li>)}
         </ol>
         <p className="category-caption">{topic.wikiSources ? <q>{topic.captions[state.phase]}</q> : topic.captions[state.phase]}</p>

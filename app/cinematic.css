@@ -1,0 +1,90 @@
+/* Diagram lighting and deterministic action effects; no new gameplay rules. */
+:root { --operation-light: #8bf1fa; --operation-warm: #ffd994; }
+.intro-radar { position: relative; z-index: 2; width: min(42vw, 580px); justify-self: center; perspective: 1000px; }
+.intro-radar-surface { position: relative; transform: rotateX(calc(12deg + var(--radar-y, 0deg))) rotateY(var(--radar-x, 0deg)); transition: transform .3s ease-out; filter: drop-shadow(0 30px 35px #0008); }
+.intro-radar svg { display: block; width: 100%; overflow: visible; }
+.intro-radar-disc { stroke: #5898aa; stroke-width: 1; }
+.intro-radar-ring { fill: none; stroke: #4c8c9e; stroke-width: 1; opacity: .35; }
+.intro-radar-ring:nth-of-type(4) { stroke-dasharray: 3 8; }
+.intro-radar-cross { fill: none; stroke: #4b8a9a; stroke-width: 1; stroke-dasharray: 2 8; opacity: .4; }
+.intro-radar-ticks { fill: none; stroke: #8bd6e2; stroke-width: 1.5; opacity: .65; }
+.intro-radar-sweep { fill: #81e9f31c; stroke: #8bf1fa55; stroke-width: 1; }
+.intro-radar-origin { fill: #d9fdff; filter: drop-shadow(0 0 8px #7aeeff); }
+.intro-radar-contact { cursor: pointer; outline: none; }
+.intro-contact-guide { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 2 6; opacity: .17; }
+.intro-contact-route { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: .75; filter: drop-shadow(0 0 6px currentColor); }
+.intro-radar-contact polygon { fill: currentColor; stroke: #efffff; stroke-width: 1; filter: drop-shadow(0 0 9px currentColor); }
+.intro-radar-contact .intro-contact-core { fill: #091f29; stroke-width: .75; }
+.intro-contact-halo { fill: #061820bb; stroke: currentColor; stroke-width: 1; stroke-dasharray: 2 7; opacity: .6; transition: fill .2s, stroke-width .2s; }
+.intro-contact-exhaust { fill: none; stroke: currentColor; stroke-width: 1.5; opacity: .5; }
+.intro-radar-contact:is(:hover,:focus-visible) .intro-contact-halo { fill: #234858; stroke-width: 3; stroke-dasharray: none; opacity: 1; }
+.intro-radar-contact:is(:hover,:focus-visible) .intro-contact-route { stroke-width: 3; opacity: 1; }
+.intro-radar-caption { position: absolute; inset: auto 15% 3%; display: flex; justify-content: space-between; color: #8cb4c2; font: 12px/1.5 ui-monospace, monospace; letter-spacing: .12em; }
+.intro-radar-legend { position: relative; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 22px; }
+.intro-radar-legend a { display: grid; gap: 7px; padding: 12px 4px; border-top: 1px solid currentColor; font-size: 14px; line-height: 1.5; transition: background .2s, transform .2s; }
+.intro-radar-legend a span { font: 12px ui-monospace, monospace; opacity: .5; }
+.intro-radar-legend a:hover { background: #73eafa0b; transform: translateY(-4px); }
+.intro-radar-legend a:focus-visible, .intro-replay:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+.intro-replay { display: flex; align-items: center; gap: 15px; margin: 8px auto 0; min-height: 44px; border: 0; background: transparent; color: #8fb2c0; cursor: pointer; font-size: 14px; }
+.intro-replay:hover { color: #c6faff; }
+.operation-effects { pointer-events: none; }
+.operation-impact { fill: none; color: #ffc778; stroke: currentColor; }
+.operation-impact circle { fill: none; stroke-width: 1.4; }
+.operation-impact circle:first-child { stroke-width: 3; filter: drop-shadow(0 0 5px #ffd38a); }
+.operation-impact path { stroke: #ffbb82; stroke-width: 2; stroke-linecap: round; }
+.operation-dock { fill: none; stroke: #7aeeef; stroke-width: 1.25; }
+.operation-dock circle { fill: none; }
+.operation-dock.operation-gold { stroke: var(--operation-warm); }
+.operation-gold rect { fill: #fff0ae; stroke: #ffd875; stroke-width: 1; }
+.operation-landing { fill: none; stroke: var(--operation-warm); stroke-width: 1.4; }
+.operation-scan { fill: none; stroke: #74dbe8; stroke-width: 1; }
+.operation-scan circle { fill: none; stroke-dasharray: 1 9; opacity: .5; }
+.operation-scan path { fill: #76e6f317; stroke: #a0f7ff55; }
+.operation-blueprint { fill: #98f0f6; stroke: #65b5c7; stroke-width: 1; }
+.operation-blueprint path { fill: none; stroke-dasharray: 2 4; }
+.operation-blueprint .operation-build-scan { stroke: #bdf9ff; stroke-width: 4; stroke-dasharray: none; filter: drop-shadow(0 0 8px #78eaff); }
+.operation-front { fill: none; stroke: #a4f5ff; stroke-width: 3; filter: drop-shadow(0 0 7px #81edff); }
+.operation-route-particles { fill: #d2fcff; filter: drop-shadow(0 0 3px currentColor); }
+.operation-unit-shadow, .category-unit .operation-unit-shadow { fill: #000; fill-opacity: .35; stroke: none; filter: blur(3px); }
+.operation-headlamp { fill: #fff6bd12; stroke: #fff6bd22; stroke-width: 1; }
+html .category-diagram { background: radial-gradient(ellipse at 50% 40%, #123d50, #081a25 80%); border: 1px solid #345565; box-shadow: inset 0 0 50px #03111977; }
+html .category-diagram { max-height: 370px; }
+html .category-scroll-enabled .category-diagram { max-height: 265px; }
+html .category-water { background: radial-gradient(ellipse at 45% 35%, #164d64, #092434 78%); }
+html .category-stage { background: linear-gradient(140deg, #102b37, #081720 75%); border-color: #355565; box-shadow: 0 24px 75px #0003, inset 0 1px #a4efff16; }
+html .category-route-live { stroke-width: 2; filter: drop-shadow(0 0 5px currentColor); }
+html .category-owned-tile { fill: #205b6a; stroke: #4e9bac; }
+html .category-building { fill: #215267; stroke: #9feff5; }
+html .category-train-car { filter: drop-shadow(0 5px 3px #0008) drop-shadow(0 0 5px #5ce6f477); }
+html .fleet-scene { border-color: #426577; background: radial-gradient(ellipse at 48% 45%, #12394c, #071923 78%); box-shadow: inset 0 0 70px #030f1877, 0 18px 45px #0002; }
+html .fleet-map-texture { opacity: .2; filter: saturate(.4) brightness(.75); }
+html .fleet-scene::after { background: linear-gradient(90deg, #03111966, transparent 15% 85%, #03111966), repeating-linear-gradient(90deg, transparent 0 79px, #8be6fa09 79px 80px); }
+html .fleet-signal-inner { fill: #143848; fill-opacity: .75; }
+html .fleet-route-guide { opacity: .18; stroke-dasharray: 3 6; }
+html .fleet-route-progress { stroke-width: 2; }
+html .campaign-scene .impact-pulse { display: none; }
+html .command-map { border: 1px solid #86dae577; box-shadow: 0 65px 90px #000b, 0 10px 0 -2px #112a34, 0 14px 0 -2px #39667466, inset 0 1px #d2f9ff44; }
+html .campaign-scene .command-map-texture { filter: saturate(.45) contrast(1.08) brightness(.8); opacity: .8; }
+html .campaign-glow { background: #64d9ef26; }
+html .campaign-player .story-player { border-color: #426d7f; box-shadow: 0 10px 35px #0005; }
+html::view-transition-new(wiki-route) { animation: cinematic-page-in .52s cubic-bezier(.2,.7,.2,1) both; }
+html::view-transition-old(wiki-route) { animation: cinematic-page-out .23s ease-in both; }
+@keyframes cinematic-page-in { from { opacity: 0; clip-path: inset(0 0 9% 0); transform: translateY(22px) scale(.985); } to { opacity: 1; clip-path: inset(0); transform: none; } }
+@keyframes cinematic-page-out { to { opacity: 0; transform: translateY(-12px) scale(1.01); } }
+@media (min-width: 1001px) { html .hero { grid-template-columns: 1.2fr 1fr; } }
+@media (max-width: 1000px) {
+  .intro-radar { width: min(72vw, 500px); margin-top: 40px; justify-self: center; }
+  .intro-radar-legend { margin-top: 10px; }
+}
+@media (max-width: 540px) {
+  .intro-radar { width: 100%; }
+  .intro-radar-caption { font-size: 12px; letter-spacing: .02em; }
+  .intro-radar-legend { gap: 9px; }
+  .intro-radar-legend a { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html::view-transition-new(wiki-route), html::view-transition-old(wiki-route) { animation: none !important; }
+  .intro-radar-surface { transform: none; transition: none; }
+  .intro-radar-legend a, .intro-contact-halo { transition: none; }
+  .intro-radar-legend a:hover { transform: none; }
+}

@@ -2,6 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import { FLEET_CHAPTER_STOPS, FLEET_MISSIONS, FLEET_MOTION_QUERY, fleetMission, fleetMotion, fleetScrollProgress } from './airFleetMotion';
+import StoryControls, { useStoryPlayer } from './StoryControls';
+import { viewportStoryProgress } from './storyPlayback';
+import { FleetEffects } from './OperationEffects';
+import OperationsViewport from './OperationsViewport';
 
 const aircraft = [
   {
@@ -47,8 +51,10 @@ export default function AirFleetStory() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const staticChapterRef = useRef(0);
-  const refreshRef = useRef<() => void>(() => {});
+  const player = useStoryPlayer(storyRef, 30000);
+  const { sample, refreshRef } = player;
+  const currentMotion = fleetMotion(player.progress);
+  const currentMission = fleetMission(currentMotion.active, currentMotion.flights[currentMotion.active]);
 
   useEffect(() => {
     const story = storyRef.current;
@@ -86,6 +92,7 @@ export default function AirFleetStory() {
     const etaValue = story.querySelector<SVGTextElement>('.fleet-eta-value');
     const payloadManifest = story.querySelector<SVGGElement>('.fleet-payload-manifest');
     const lengths = paths.map((path) => path.getTotalLength());
+    const wakes = Array.from(story.querySelectorAll<SVGPathElement>('.fleet-route-wake'));
     let frame = 0;
     let disposed = false;
     let observedWidth = 0;
@@ -95,7 +102,9 @@ export default function AirFleetStory() {
       const enabled = story.classList.contains('fleet-scroll-enabled');
       const inset = parseFloat(window.getComputedStyle(stage).top) || 0;
       const progress = fleetScrollProgress(story.getBoundingClientRect().top, story.offsetHeight, stage.offsetHeight, inset);
-      const motion = fleetMotion(enabled ? progress : FLEET_CHAPTER_STOPS[staticChapterRef.current]);
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const scene = story.querySelector('.operations-viewport')?.getBoundingClientRect() ?? stage.getBoundingClientRect();
+      const motion = fleetMotion(sample(reduced ? 0 : enabled ? progress : viewportStoryProgress(scene.top, scene.height, window.innerHeight)));
       story.dataset.active = String(motion.active);
       story.style.setProperty('--fleet-progress', String(motion.progress));
       track.style.transform = enabled ? `translate3d(${-motion.chapter * viewport.clientWidth}px, 0, 0)` : '';
@@ -105,7 +114,7 @@ export default function AirFleetStory() {
         else control.removeAttribute('aria-current');
       });
       const activeMission = FLEET_MISSIONS[motion.active];
-      const activeState = fleetMission(motion.active, enabled ? motion.flights[motion.active] : 1);
+      const activeState = fleetMission(motion.active, motion.flights[motion.active]);
       if (missionTitle) missionTitle.textContent = activeMission.title;
       if (missionNote) missionNote.textContent = activeMission.note;
       if (missionCaption) missionCaption.textContent = activeMission.captions[activeState.phase];
@@ -120,7 +129,7 @@ export default function AirFleetStory() {
         else step.removeAttribute('aria-current');
       });
       paths.forEach((path, index) => {
-        const state = fleetMission(index, enabled ? motion.flights[index] : 1);
+        const state = fleetMission(index, motion.flights[index]);
         const flight = state.flight;
         const length = lengths[index];
         const distance = length * flight;
@@ -128,6 +137,12 @@ export default function AirFleetStory() {
         const before = path.getPointAtLength(Math.max(0, distance - 2));
         const after = path.getPointAtLength(Math.min(length, distance + 2));
         const heading = Math.atan2(after.y - before.y, after.x - before.x) * 180 / Math.PI;
+        const start = Math.max(0, distance - 100);
+        wakes[index]?.setAttribute('d', Array.from({ length: 20 }, (_, i) => {
+          const point = path.getPointAtLength(start + (distance - start) * i / 19);
+          return `${i ? 'L' : 'M'} ${point.x} ${point.y}`;
+        }).join(' '));
+        wakes[index]?.style.setProperty('opacity', String(state.aircraftOpacity * 0.25));
         path.style.strokeDashoffset = String(100 - flight * 100);
         units[index]?.setAttribute('transform', `translate(${point.x} ${point.y}) rotate(${heading})`);
         units[index]?.style.setProperty('opacity', String(state.aircraftOpacity));
@@ -206,22 +221,10 @@ export default function AirFleetStory() {
       window.cancelAnimationFrame(frame);
       chapters.forEach((chapter) => { chapter.inert = false; });
     };
-  }, []);
+  }, [sample, refreshRef]);
 
   const goToChapter = (index: number) => {
-    const story = storyRef.current;
-    const stage = stageRef.current;
-    if (!story || !stage) return;
-    if (!story.classList.contains('fleet-scroll-enabled')) {
-      staticChapterRef.current = index;
-      refreshRef.current();
-      return;
-    }
-    const inset = parseFloat(window.getComputedStyle(stage).top) || 0;
-    window.scrollTo({
-      top: window.scrollY + story.getBoundingClientRect().top - inset + FLEET_CHAPTER_STOPS[index] * (story.offsetHeight - stage.offsetHeight),
-      behavior: 'smooth',
-    });
+    player.seek(FLEET_CHAPTER_STOPS[index] - 0.12);
   };
 
   return (
@@ -236,11 +239,12 @@ export default function AirFleetStory() {
 
           <div className="fleet-mission">
             <div className="fleet-mission-label"><strong className="fleet-mission-title">{FLEET_MISSIONS[0].title}</strong><span className="fleet-mission-note">{FLEET_MISSIONS[0].note}</span></div>
-            <div className="fleet-scene" aria-hidden="true">
+            <OperationsViewport kind={(['trade', 'intercept', 'landing'] as const)[currentMotion.active]} progress={currentMotion.flights[currentMotion.active]} air fleet fallback={<div className="fleet-scene" aria-hidden="true">
               <div className="fleet-map-texture" />
               <svg className="fleet-routes" viewBox="0 0 1200 350" fill="none">
-              {aircraft.map((unit) => (
+              {aircraft.map((unit, index) => (
                 <g key={unit.slug} className={`fleet-lane fleet-lane-${unit.kind}`}>
+                  <path className="fleet-route-wake" />
                   {unit.kind === 'trade' && <>
                     <AirportNode x={130} y={230} label="Origin airport" />
                     <AirportNode x={1070} y={230} label="Partner airport" />
@@ -294,6 +298,7 @@ export default function AirFleetStory() {
                   <path className="fleet-route-guide" d={unit.route} />
                   <path className="fleet-route-progress" d={unit.route} pathLength="100" />
                   <g className="fleet-aircraft">
+                    <ellipse className="operation-unit-shadow" cx="-9" cy="15" rx="22" ry="8" />
                     <circle className="fleet-signal" r="29" />
                     <circle className="fleet-signal-inner" r="21" />
                     <path className="fleet-unit-tail" d="M -54 0 H -20" />
@@ -302,10 +307,11 @@ export default function AirFleetStory() {
                     {unit.kind === 'trade' && <g className="fleet-cargo-packets"><rect x="-6" y="-5" width="5" height="10" /><rect x="2" y="-5" width="5" height="10" /></g>}
                     {unit.kind === 'helicopter' && <g className="fleet-payload-dots"><circle cx="-5" r="2.5" /><circle cx="2" r="2.5" /><circle cx="9" r="2.5" /></g>}
                   </g>
+                  <FleetEffects index={index} progress={currentMotion.flights[index]} />
                 </g>
               ))}
               </svg>
-            </div>
+            </div>} />
             <ol className="fleet-milestones" aria-label="Mission sequence">{FLEET_MISSIONS[0].steps.map((step, index) => <li key={index} data-state={index === 0 ? 'current' : 'next'}>{step}</li>)}</ol>
             <p className="fleet-mission-caption">{FLEET_MISSIONS[0].captions[0]}</p>
             <aside className="fleet-doctrine">
@@ -314,6 +320,7 @@ export default function AirFleetStory() {
             </aside>
           </div>
 
+          <StoryControls player={player} label="Air missions" phase={`${aircraft[currentMotion.active].role} · ${FLEET_MISSIONS[currentMotion.active].steps[currentMission.phase]}`} />
           <div className="fleet-viewport" ref={viewportRef}>
             <div className="fleet-track" ref={trackRef}>
               {aircraft.map((unit, index) => (

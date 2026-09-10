@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 @import './category-story.css';
+@import './story-controls.css';
+@import './cinematic.css';
+@import './operations-world.css';
 
 :root {
   --ink: #ecf8ff;

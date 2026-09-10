@@ -1,0 +1,69 @@
+.story-player { display: grid; grid-template-columns: auto minmax(100px, 1fr) auto; align-items: center; gap: 10px 18px; min-width: 0; padding: 12px 14px 10px; border: 1px solid #2b4b59; background: linear-gradient(125deg, #102a36, #0a1821); border-radius: 8px; }
+.story-player-actions { display: flex; gap: 6px; }
+.story-player button { min-height: 44px; padding: 9px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid transparent; border-radius: 5px; background: #142d38; color: #b8d6e1; cursor: pointer; font: 500 .875rem/1.3 var(--font-body); transition: background .2s, border-color .2s, transform .2s; }
+.story-player .story-play { color: #071b22; background: #75e4f1; min-width: 85px; }
+.story-player button:hover:not(:disabled) { border-color: #7ce7f3; transform: translateY(-1px); }
+.story-player button:active:not(:disabled) { transform: translateY(0); }
+.story-player button:disabled { opacity: .45; cursor: not-allowed; }
+.story-player .story-scroll-mode { background: transparent; border-color: #34505d; }
+.story-player .story-scroll-mode[aria-pressed='true'] { color: #80e3ed; border-color: #367781; }
+.story-scrubber { min-width: 0; }
+.story-scrubber label { display: flex; justify-content: space-between; gap: 10px; color: #c2dce5; font-size: .875rem; line-height: 1.3; }
+.story-scrubber output { color: #78e4ef; font: .75rem/1.5 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.story-scrubber input { appearance: none; display: block; width: 100%; height: 24px; margin: 4px 0 0; cursor: ew-resize; background: transparent; }
+.story-scrubber input::-webkit-slider-runnable-track { height: 4px; border-radius: 3px; background: linear-gradient(90deg, #7be9f3 var(--scrub-progress), #284654 var(--scrub-progress)); }
+.story-scrubber input::-moz-range-track { height: 4px; border-radius: 3px; background: #284654; }
+.story-scrubber input::-moz-range-progress { height: 4px; background: #7be9f3; }
+.story-scrubber input::-webkit-slider-thumb { appearance: none; width: 15px; height: 15px; margin-top: -5.5px; border-radius: 50%; background: #e3fdff; border: 3px solid #2db0c1; box-shadow: 0 0 12px #41daee55; }
+.story-scrubber input::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #e3fdff; border: 3px solid #2db0c1; }
+.story-player :is(button,input):focus-visible { outline: 2px solid #b1f7ff; outline-offset: 4px; }
+.story-player-help { grid-column: 1/-1; margin: 0; color: #91aebb; font: .75rem/1.5 var(--font-body); }
+.category-diagram-frame { position: relative; isolation: isolate; }
+.category-diagram-frame::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at var(--inspect-x, 50%) var(--inspect-y, 50%), #72e8f315, transparent 38%); opacity: 0; transition: opacity .25s; }
+.category-diagram-frame:hover::after { opacity: 1; }
+.category-diagram { border-radius: 6px; }
+.category-route-wake { fill: none; stroke: currentColor; stroke-width: 7; opacity: .22; stroke-linecap: round; filter: blur(2px); }
+.category-unit .category-unit-heading { fill: none; stroke: currentColor; stroke-width: 1; opacity: .4; }
+.category-unit .category-unit-halo { stroke-dasharray: 3 5; stroke-width: 1; }
+.category-stage { border-radius: 10px; box-shadow: 0 18px 45px #0002; }
+.category-stage > .story-player { margin-top: 12px; }
+.category-steps button { font-size: .875rem; min-height: 44px; transition: background .2s, color .2s; border-radius: 0 0 5px 5px; padding-left: 6px; }
+.category-steps button:hover, .category-steps button:focus-visible { background: #173d49; color: #dbfaff; }
+.category-steps button span { font-size: .75rem; }
+.category-atlas-choices button { font-size: .875rem; min-height: 44px; border-radius: 5px; }
+.category-story-heading .eyebrow, .category-skip, .category-story-footer { font-size: .75rem; }
+.category-caption { font-size: 1rem; }
+.category-story[data-inspecting='true'] .category-diagram :is(.category-range,.category-route-live,.category-building,.category-owned-tile,.category-train-car) { filter: drop-shadow(0 0 5px #67e8f955); }
+.campaign-player { position: absolute; z-index: 9; left: 3.5vw; right: 38%; bottom: 76px; }
+.campaign-player .story-player { background: #091c26f2; backdrop-filter: blur(12px); }
+.campaign-player .story-player-help { display: none; }
+.campaign-player .story-player { grid-template-columns: auto minmax(80px,1fr); }
+.campaign-player .story-scroll-mode { grid-column: 1/-1; justify-self: start; min-height: 32px; font-size: .75rem; padding: 4px 10px; }
+.campaign-scene .command-map { transform: translateY(var(--map-lift)) rotateX(calc(var(--map-tilt) + var(--look-y, 0deg))) rotateZ(calc(var(--map-turn) + var(--look-x, 0deg))) scale(var(--map-scale)); }
+.campaign-route-base { opacity: .18; stroke-width: 1.2; stroke-dasharray: 2 5; }
+.campaign-svg-unit-fighter:not(.is-engaging) { filter: drop-shadow(0 0 9px #5ce6f4aa); }
+.campaign-svg-unit-fighter:not(.is-engaging) .marker-body { fill: var(--cyan); }
+.campaign-svg-unit-fighter:not(.is-engaging) :is(.marker-trail,.marker-signal) { stroke: var(--cyan); }
+.fleet-route-wake { fill: none; stroke: currentColor; stroke-width: 8; opacity: .18; stroke-linecap: round; filter: blur(3px); }
+.fleet-scene { border-radius: 8px; }
+.fleet-scene .fleet-aircraft:hover { filter: drop-shadow(0 0 15px currentColor); }
+.fleet-stage > .story-player { margin-top: -4px; }
+.fleet-story.fleet-scroll-enabled .fleet-stage { grid-template-rows: auto minmax(240px, 1fr) auto auto auto; }
+@media (max-width: 1000px) {
+  .campaign-player { right: 4%; bottom: 74px; }
+  .campaign-player .story-player { grid-template-columns: auto minmax(90px, 1fr) auto; }
+  .campaign-player .story-scroll-mode { grid-column: auto; }
+}
+@media (max-width: 640px) {
+  .story-player { grid-template-columns: 1fr auto; gap: 10px; padding: 10px; }
+  .story-scrubber { grid-column: 1/-1; grid-row: 1; }
+  .story-player button { padding: 8px 10px; }
+  .campaign-player { bottom: 62px; left: 18px; right: 18px; }
+  .campaign-player .story-player { grid-template-columns: 1fr auto; }
+  .category-caption { font-size: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-player button, .category-diagram-frame::after { transition: none; }
+  .campaign-scene .command-map { transform: rotateX(38deg) rotateZ(-5deg); }
+  .category-diagram-frame::after { display: none; }
+}

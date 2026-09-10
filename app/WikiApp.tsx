@@ -13,6 +13,12 @@ import AirFleetStory from './AirFleetStory';
 import CategoryStory, { CategoryAtlas } from './CategoryStory';
 import SoftDiplomacyContext from './SoftDiplomacyContext';
 import syncRecord from '../public/content/sync.json';
+import StoryControls, { useStoryPlayer } from './StoryControls';
+import { campaignMissionProgress } from './storyPlayback';
+import { fleetMission } from './airFleetMotion';
+import IntroRadar from './IntroRadar';
+import { DockPulse, ImpactBurst, LandingField } from './OperationEffects';
+import { categorySegment } from './categoryMotion';
 
 type Heading = { id: string; text: string; level: number };
 type PageIndex = {
@@ -169,6 +175,9 @@ function Shell({
 
 function CampaignStory() {
   const storyRef = useRef<HTMLElement>(null);
+  const player = useStoryPlayer(storyRef, 32000);
+  const { sample, refreshRef } = player;
+  const mapMissions = campaignMissionProgress(player.progress);
   const tradePathRef = useRef<SVGPathElement>(null);
   const fighterPathRef = useRef<SVGPathElement>(null);
   const helicopterPathRef = useRef<SVGPathElement>(null);
@@ -207,15 +216,19 @@ function CampaignStory() {
     const update = () => {
       const rect = story.getBoundingClientRect();
       const travel = Math.max(1, rect.height - window.innerHeight);
-      const progress = clamp(-rect.top / travel);
-      const trade = clamp((progress - 0.12) / 0.26);
-      const fighter = clamp((progress - 0.39) / 0.24);
-      const helicopter = clamp((progress - 0.67) / 0.24);
-      const tradeArrival = clamp((trade - 0.88) / 0.12);
-      const fighterLock = clamp((fighter - 0.5) / 0.16);
-      const fighterShot = clamp((fighter - 0.7) / 0.2);
-      const fighterImpact = clamp((fighter - 0.9) / 0.1);
-      const helicopterDeploy = clamp((helicopter - 0.72) / 0.28);
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const progress = sample(reduced ? 0 : clamp(-rect.top / travel));
+      const missions = campaignMissionProgress(progress);
+      const tradeState = fleetMission(0, missions[0]);
+      const fighterState = fleetMission(1, missions[1]);
+      const helicopterState = fleetMission(2, missions[2]);
+      const trade = tradeState.flight;
+      const fighter = fighterState.flight;
+      const helicopter = helicopterState.flight;
+      const tradeArrival = tradeState.goldOpacity;
+      const fighterShot = fighterState.projectile;
+      const fighterImpact = fighterState.impact;
+      const helicopterDeploy = helicopterState.ropeLength;
 
       story.dataset.phase = String(Math.min(3, Math.floor(progress * 4)));
       story.style.setProperty('--story-progress', progress.toFixed(4));
@@ -233,10 +246,13 @@ function CampaignStory() {
         (100 - helicopter * 100).toFixed(2),
       );
       story.style.setProperty('--trade-arrival', tradeArrival.toFixed(3));
-      story.style.setProperty('--fighter-lock', (fighterLock * (1 - fighterImpact)).toFixed(3));
+      story.style.setProperty('--fighter-lock', fighterState.lockOpacity.toFixed(3));
       story.style.setProperty('--fighter-impact', fighterImpact.toFixed(3));
-      story.style.setProperty('--fighter-impact-ring', Math.sin(fighterImpact * Math.PI).toFixed(3));
-      story.style.setProperty('--helicopter-deploy', helicopterDeploy.toFixed(3));
+      story.style.setProperty('--fighter-impact-ring', fighterState.impactOpacity.toFixed(3));
+      story.style.setProperty('--helicopter-deploy', helicopterState.ropeOpacity.toFixed(3));
+      fighterUnitRef.current?.classList.toggle('is-engaging', fighterState.inCombat);
+      tradeUnitRef.current?.style.setProperty('opacity', String(tradeState.aircraftOpacity));
+      helicopterUnitRef.current?.style.setProperty('opacity', String(helicopterState.aircraftOpacity));
       moveUnit(tradePathRef.current, tradeUnitRef.current, trade);
       moveUnit(fighterPathRef.current, fighterUnitRef.current, fighter);
       moveUnit(
@@ -244,15 +260,15 @@ function CampaignStory() {
         helicopterUnitRef.current,
         helicopter,
       );
-      const shellX = 690 - fighterShot * 120;
-      const shellY = 270 - fighterShot * 60;
+      const shellX = 670 - fighterShot * 91;
+      const shellY = 260 - fighterShot * 45.5;
       fighterShellRef.current?.setAttribute('transform', `translate(${shellX.toFixed(2)} ${shellY.toFixed(2)}) rotate(-153.4)`);
-      fighterShellRef.current?.style.setProperty('opacity', fighter > 0.7 && fighterImpact < 1 ? '1' : '0');
+      fighterShellRef.current?.style.setProperty('opacity', String(fighterState.projectileOpacity));
       helicopterRopeRef.current?.setAttribute('d', `M 180 210 V ${(210 + helicopterDeploy * 70).toFixed(2)}`);
       helicopterTroopRefs.current.forEach((troop, index) => {
-        const descent = clamp((helicopterDeploy - index * 0.16) / 0.55);
+        const { descent, opacity } = helicopterState.rappellers[index];
         troop?.setAttribute('transform', `translate(${180 + (index - 1) * 13 * descent} ${220 + descent * 58})`);
-        troop?.style.setProperty('opacity', descent > 0 ? '1' : '0');
+        troop?.style.setProperty('opacity', String(opacity));
       });
       frame = 0;
     };
@@ -260,15 +276,17 @@ function CampaignStory() {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
 
-    update();
+    refreshRef.current = requestUpdate;
+    requestUpdate();
     window.addEventListener('scroll', requestUpdate, { passive: true });
     window.addEventListener('resize', requestUpdate);
     return () => {
       window.removeEventListener('scroll', requestUpdate);
       window.removeEventListener('resize', requestUpdate);
+      refreshRef.current = () => {};
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [sample, refreshRef]);
 
   return (
     <section className="campaign-story" ref={storyRef} data-phase="0">
@@ -277,12 +295,23 @@ function CampaignStory() {
           <p className="eyebrow">One connected front</p>
           <p>Scroll to run the operation</p>
         </div>
-        <div className="campaign-scene" aria-hidden="true">
+        <div className="campaign-scene" aria-hidden="true" onPointerMove={(event) => {
+          if (event.pointerType !== 'mouse' || player.reducedMotion) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--look-x', `${((event.clientX - rect.left) / rect.width - 0.5) * 5}deg`);
+          event.currentTarget.style.setProperty('--look-y', `${((event.clientY - rect.top) / rect.height - 0.5) * -4}deg`);
+        }} onPointerLeave={(event) => {
+          event.currentTarget.style.setProperty('--look-x', '0deg');
+          event.currentTarget.style.setProperty('--look-y', '0deg');
+        }}>
           <div className="campaign-glow" />
           <div className="command-map">
             <div className="command-map-texture" />
             <div className="command-grid" />
             <svg className="campaign-routes" viewBox="0 0 1000 560">
+              <path className="campaign-route-base" stroke="#5ce6f4" d="M 280 375 Q 540 92 790 174" />
+              <path className="campaign-route-base" stroke="#ff725f" d="M 840 405 Q 760 315 690 270" />
+              <path className="campaign-route-base" stroke="#ffc760" d="M 480 430 Q 310 310 180 198" />
               <path ref={tradePathRef} className="route route-trade" pathLength="100" d="M 280 375 Q 540 92 790 174" />
               <path ref={fighterPathRef} className="route route-fighter" pathLength="100" d="M 840 405 Q 760 315 690 270" />
               <path ref={helicopterPathRef} className="route route-helicopter" pathLength="100" d="M 480 430 Q 310 310 180 198" />
@@ -304,6 +333,10 @@ function CampaignStory() {
                 <polygon className="marker-body" points="13,0 -10,10 -10,-10" />
               </g>
               <g className="campaign-trade-arrival" transform="translate(790 174)"><circle r="25" /><circle r="34" /><text y="-42" textAnchor="middle">+ GOLD</text></g>
+              <DockPulse x={790} y={174} progress={categorySegment(mapMissions[0], 0.8, 0.92)} />
+              <DockPulse x={790} y={174} progress={categorySegment(mapMissions[0], 0.92, 1)} gold />
+              <ImpactBurst x={570} y={210} progress={fleetMission(1, mapMissions[1]).impact} />
+              <LandingField x={180} y={280} progress={categorySegment(mapMissions[2], 0.6, 0.98)} />
               <g className="campaign-target-lock" transform="translate(570 210)"><path d="M -28 -16 V -28 H -16 M 16 -28 H 28 V -16 M 28 16 V 28 H 16 M -16 28 H -28 V 16" /><circle r="20" /></g>
               <g ref={fighterShellRef} className="campaign-fighter-shell" transform="translate(690 270) rotate(-153.4)"><path d="M -24 0 H -7" /><polygon points="10,0 2,-4 -7,-3 -7,3 2,4" /></g>
               <circle className="campaign-fighter-impact" cx="570" cy="210" r="34" />
@@ -318,6 +351,7 @@ function CampaignStory() {
           </div>
           <div className="map-shadow" />
         </div>
+        <div className="campaign-player"><StoryControls player={player} label="World map" phase={['Overview', 'Air trade', 'Intercept', 'Insertion'][Math.min(3, Math.floor(player.progress * 4))]} /></div>
         <div className="campaign-telemetry" aria-hidden="true">
           <span>SOFTDIPLOMACY AIR LAYER</span>
           <span className="telemetry-state telemetry-state-0"><b>FOUNDATION</b><i>OpenFront references and air supplements</i><em>Read the source; explore the custom aircraft separately</em></span>
@@ -408,16 +442,7 @@ function Home({ index }: { index: PageIndex[] }) {
             <a className="button button-secondary" href="#/all">Browse {index.length || 'all'} pages</a>
           </div>
         </div>
-        <div className="radar" aria-label="Air unit silhouettes">
-          <div className="radar-ring radar-ring-one" />
-          <div className="radar-ring radar-ring-two" />
-          <div className="radar-cross radar-cross-one" />
-          <div className="radar-cross radar-cross-two" />
-          <div className="radar-sweep" />
-          <div className="radar-unit radar-unit-plane"><Mark kind="plane" /><small>TRADE · 120%</small></div>
-          <div className="radar-unit radar-unit-jet"><Mark kind="jet" /><small>FIGHTER · 120%</small></div>
-          <div className="radar-unit radar-unit-heli"><Mark kind="helicopter" /><small>SPEC OPS · 2 MAX</small></div>
-        </div>
+        <IntroRadar />
       </section>
 
       <CampaignStory />
