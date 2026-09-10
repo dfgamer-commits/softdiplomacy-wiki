@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { immersivePose } from './immersiveCamera.ts';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { cameraBlendFactor, immersivePose, scenePixelRatio } from './immersiveCamera.ts';
+import { coastlineGeometry, createCraftKit, waterMaterial } from './operationCraft.ts';
 
 export type WorldKind = 'trade' | 'intercept' | 'landing' | 'rail' | 'territory' | 'construction' | 'economy' | 'network';
 export type WorldState = { flight: number; prepare: number; interact: number; outcome: number; shot: number; shotVisible: boolean; impact: number; targetVisible: boolean; engaging: boolean; rope: number; descent: number[]; advance: number; carrierOpacity: number; connection?: number; timeline?: number; enemyApproach?: number };
@@ -15,21 +17,24 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x071019);
   scene.fog = new THREE.Fog(0x071019, 25, 65);
-  scene.add(new THREE.HemisphereLight(0xc0f4ff, 0x182632, 2.4));
-  const sun = new THREE.DirectionalLight(0xe2f6ff, 3.2);
-  sun.position.set(-5, 12, 6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  scene.add(new THREE.HemisphereLight(0xc0def4, 0x182632, 1.4));
+  const sun = new THREE.DirectionalLight(0xffead5, 3.4);
+  sun.position.set(-5, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -12; sun.shadow.camera.right = 12; sun.shadow.camera.top = 10; sun.shadow.camera.bottom = -10;
-  sun.shadow.normalBias = 0.03; scene.add(sun);
-  const fill = new THREE.PointLight(cyan, 22, 22); fill.position.set(2, 4, -5); scene.add(fill);
+  sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 35;
+  sun.shadow.normalBias = 0.018; sun.shadow.bias = -0.0001; sun.shadow.radius = 3; scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x7fcbe9, 1.5); fill.position.set(4, 5, -7); scene.add(fill);
+  const craft = createCraftKit();
   const root = new THREE.Group(); scene.add(root);
   const environment = new THREE.Group(); scene.add(environment); environment.visible = false;
   const horizon = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0x112b32, roughness: 1 })); horizon.rotation.x = -Math.PI / 2; horizon.position.y = -0.52; horizon.receiveShadow = true; environment.add(horizon);
   const farGrid = new THREE.GridHelper(100, 100, 0x2b505c, 0x193943); farGrid.position.y = -0.5; environment.add(farGrid);
-  const surface = new THREE.MeshStandardMaterial({ color: 0x173a49, roughness: 0.67, metalness: 0.35 });
+  const surface = new THREE.MeshStandardMaterial({ color: 0x203a42, roughness: 0.88, metalness: 0.1 });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(18, 0.42, 11), surface); floor.position.y = -0.28; floor.receiveShadow = true; root.add(floor);
   const rim = new THREE.LineSegments(new THREE.EdgesGeometry(floor.geometry), new THREE.LineBasicMaterial({ color: 0x527788 })); rim.position.copy(floor.position); root.add(rim);
   // Tile grid is a spatial reference, not a radar or a gameplay range.
   const grid = new THREE.GridHelper(18, 18, 0x385662, 0x203b48); grid.position.y = -0.045; grid.scale.z = 0.6; root.add(grid);
+  grid.visible = !['trade', 'intercept', 'landing'].includes(kind);
   const mapMaterial = new THREE.MeshStandardMaterial({ color: 0x407381, transparent: true, opacity: 0.6, roughness: 1, depthWrite: false });
   const map = new THREE.Mesh(new THREE.PlaneGeometry(17.8, 10.8), mapMaterial); map.rotation.x = -Math.PI / 2; map.position.y = -0.052; map.receiveShadow = true; root.add(map);
   const content = new THREE.Group(); root.add(content);
@@ -44,18 +49,10 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   }
   function station(x: number, z: number, label: string, color = cyan) {
     const group = new THREE.Group(); group.position.set(x, 0.08, z); content.add(group);
-    mesh(new THREE.CylinderGeometry(0.63, 0.73, 0.16, air ? 4 : 16), 0x315363, group);
-    const head = mesh(new THREE.CylinderGeometry(0.36, 0.4, 0.12, air ? 4 : 16), color, group, 0.3); head.position.y = 0.16;
-    // Two status lamps show the endpoint becoming ready, not an invented radius.
-    for (let i = 0; i < 2; i++) mesh(new THREE.BoxGeometry(0.07, 0.08, 0.07), color, group, 0.5).position.set((i ? 1 : -1) * 0.48, 0.16, 0.48);
-    head.userData.label = label; objects.push(head); return group;
+    craft.station(group, air, label, color); group.userData.label = label; objects.push(group); return group;
   }
   function unit(sides: number, color: number, label: string) {
-    const group = new THREE.Group(); group.scale.setScalar(1.3); content.add(group);
-    const body = mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.15, sides), color, group, 0.22);
-    body.userData.label = label; objects.push(body);
-    mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.17, sides), 0x08232e, group).position.y = 0.025;
-    const pin = mesh(new THREE.SphereGeometry(0.045, 8, 6), 0xecffff, group, 1); pin.position.set(0, 0.13, 0.21);
+    const group = craft.unit(sides, color, label); group.userData.label = label; content.add(group); objects.push(group);
     return group;
   }
   const height = air ? 1.8 : 0.25;
@@ -63,6 +60,7 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   const curve = new THREE.CubicBezierCurve3(v(-6, air ? 0.48 : 0.25, 2), v(-3.7, air ? height + 0.5 : height, -3.5), v(2, air ? height + 0.6 : height, -3.8), end);
   const guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(100)), new THREE.LineBasicMaterial({ color: cyan, transparent: true, opacity: 0.2 })); content.add(guide);
   const trail = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(100)), new THREE.LineBasicMaterial({ color: cyan })); content.add(trail);
+  const routeTube = craft.add(content, new THREE.TubeGeometry(curve, 100, 0.014, 6, false), craft.material(kind === 'landing' ? amber : cyan, 0.25, 0.4, 0.5), 'completed route'); routeTube.visible = ['trade', 'intercept', 'landing'].includes(kind); routeTube.castShadow = false;
   const motes = Array.from({ length: 16 }, (_, i) => mesh(new THREE.SphereGeometry(0.04 + (16 - i) * 0.001, 6, 4), cyan, content, 0.9));
   const moving = unit(air ? kind === 'intercept' ? 5 : 3 : 24, kind === 'landing' ? amber : cyan, air ? kind === 'intercept' ? 'Fighter jet' : kind === 'landing' ? 'Attack helicopter' : 'Passenger plane' : kind === 'intercept' ? 'Warship' : kind === 'landing' ? 'Transport ship' : 'Trade ship');
   const departure = station(-6, 2, kind === 'economy' ? 'Base income' : kind === 'rail' ? 'Factory' : kind === 'landing' && !air ? 'Owned coast' : air ? 'Origin airport' : 'Origin port');
@@ -73,29 +71,33 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   const lock = new THREE.Group(); content.add(lock); lock.position.copy(enemyPosition);
   for (let i = 0; i < 4; i++) { const bar = mesh(new THREE.BoxGeometry(0.3, 0.025, 0.045), amber, lock, 0.8); bar.position.set(Math.sin(i * Math.PI / 2) * 0.65, 0, Math.cos(i * Math.PI / 2) * 0.65); bar.rotation.y = i * Math.PI / 2; }
   const shell = mesh(new THREE.CapsuleGeometry(0.055, 0.2, 4, 8), 0xffe3ac, content, 2); shell.rotation.z = Math.PI / 2;
+  const shellStreak = craft.add(shell, new THREE.ConeGeometry(0.055, 0.55, 8), new THREE.MeshBasicMaterial({ color: 0xffd99b, transparent: true, opacity: 0.45, depthWrite: false }), 'projectile motion trace', v(0, -0.38, 0)); shellStreak.rotation.z = Math.PI; shellStreak.castShadow = false;
   const flash = new THREE.PointLight(amber, 0, 7); content.add(flash);
   const burst = Array.from({ length: 8 }, () => mesh(new THREE.TetrahedronGeometry(0.07), amber, content, 0.6));
   const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints([end, end]), new THREE.LineBasicMaterial({ color: 0xffeac7 })); content.add(rope);
+  const ropeCable = craft.add(content, new THREE.CylinderGeometry(0.013, 0.013, 1, 8), craft.material(0xd3c4a4, 0.15, 0.9), 'deployed rope cable');
   const troops = [0, 1, 2].map(() => mesh(new THREE.CapsuleGeometry(0.075, 0.16, 3, 6), amber));
+  const troopRig = troops.map(troop => craft.trooper(troop, amber));
   const landing = mesh(new THREE.BoxGeometry(1.6, 0.07, 1.6), 0x4c644e); landing.position.copy(v(end.x, 0.03, end.z));
   const railCurve = new THREE.CatmullRomCurve3([v(-7, 0.13, 2), v(-4, 0.13, 2), v(-2, 0.13, -1.8), v(1.5, 0.13, -1.8), v(4, 0.13, 1.5), v(7, 0.13, 1.5)]);
   const railGroup = new THREE.Group(); content.add(railGroup);
+  const railSteel: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const points = Array.from({ length: 160 }, (_, i) => { const t = i / 159, p = railCurve.getPointAt(t), tangent = railCurve.getTangentAt(t); return p.add(v(-tangent.z, 0, tangent.x).multiplyScalar(side * 0.18)); });
     railGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0xc6d7db })));
+    const rail = craft.add(railGroup, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p => p.clone().add(v(0, 0.043, 0)))), 159, 0.021, 5, false), craft.material(0x99aeb8, 0.85, 0.26), 'continuous steel rail'); railSteel.push(rail);
   }
   const ties = new THREE.InstancedMesh(new THREE.BoxGeometry(0.6, 0.065, 0.07), new THREE.MeshStandardMaterial({ color: 0x426574 }), 90); railGroup.add(ties);
   const dummy = new THREE.Object3D();
   for (let i = 0; i < 90; i++) { const t = i / 89, tangent = railCurve.getTangentAt(t); dummy.position.copy(railCurve.getPointAt(t)); dummy.rotation.y = Math.atan2(tangent.x, tangent.z); dummy.updateMatrix(); ties.setMatrixAt(i, dummy.matrix); }
+  const trainAxles: THREE.Group[][] = [];
   const train = [0, 1, 2].map((i) => {
     const car = new THREE.Group(); railGroup.add(car);
-    mesh(new THREE.BoxGeometry(0.4, 0.24, 0.59), i ? 0x478b9c : cyan, car, 0.1).position.y = 0.17;
-    mesh(new THREE.BoxGeometry(0.3, 0.03, 0.43), 0xb3ecf0, car).position.y = 0.31;
-    for (const z of [-0.18, 0.18]) { const wheels = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.52, 8), 0x10232c, car); wheels.rotation.z = Math.PI / 2; wheels.position.set(0, 0.03, z); }
+    trainAxles.push(craft.carriage(car, i === 0));
     return car;
   });
   const couplers = [0, 1].map(() => { const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([v(0, 0, 0), v(0, 0, 0)]), new THREE.LineBasicMaterial({ color: 0xc0d6de })); railGroup.add(line); return line; });
-  const columns = [0, 1, 2].map((i) => { const c = mesh(new THREE.BoxGeometry(0.9, 1, 1.2), cyan); c.position.x = (i - 1) * 1.2; return c; });
+  const columns = [0, 1, 2].map((i) => { const c = mesh(craft.rounded(0.9, 1, 1.2), 0x688894); c.position.x = (i - 1) * 1.2; craft.city(c, 0.9, 1.8 + (i === 1 ? 1.2 : i * 0.25), 1.2); return c; });
   const blueprint = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(4.2, 3.2, 2)), new THREE.LineBasicMaterial({ color: 0x6cced8, transparent: true, opacity: 0.35 })); blueprint.position.y = 1.6; content.add(blueprint);
   const tiles = Array.from({ length: 45 }, (_, i) => { const tile = mesh(new THREE.BoxGeometry(0.85, 0.12, 0.85), i % 9 < 4 ? 0x397584 : 0x4d3a48); tile.position.set((i % 9 - 4) * 0.92, 0.09, (Math.floor(i / 9) - 2) * 0.92); return tile; });
   const coins = Array.from({ length: 12 }, () => mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 20), amber, content, 0.2));
@@ -120,16 +122,21 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   // water corridor; airports sit on land. Geographic coordinates are not implied.
   map.visible = false;
   const shores = new THREE.Group(); content.add(shores);
+  const water = waterMaterial();
+  const waterPlane = new THREE.Mesh(new THREE.PlaneGeometry(17.9, 10.9).rotateX(-Math.PI / 2), water.material); waterPlane.name = 'water corridor'; waterPlane.position.y = -0.06; waterPlane.receiveShadow = true; waterPlane.visible = routeScene; content.add(waterPlane);
   if (routeScene) {
-    for (const point of [v(-6.7, 0, 2.6), v(6.6, 0, 2.4)]) {
-      const shore = mesh(new THREE.BoxGeometry(3.8, 0.1, 3.3), 0x304b43, shores); shore.position.copy(point);
-      if (!air) shore.position.z = 4.7;
+    for (const [index, point] of [v(-6.5, 0, 2.5), v(6.3, 0, 2.4)].entries()) {
+      const shore = new THREE.Mesh(coastlineGeometry(point.x, air ? point.z : 4.6, 2.4, air ? 2.8 : 1.6, index * 1.4), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0.05 })); shore.name = 'contoured coastal shelf'; shore.receiveShadow = true; shore.castShadow = true; shores.add(shore);
     }
-    surface.color.setHex(air ? 0x203d39 : 0x143c50);
+    surface.color.setHex(0x143747);
   }
   const anchors = [0, 1, 2].map((id) => ({ id, label: '', position: v(0, 0, 0), visible: true }));
   if (!air && routeScene) {
-    for (const point of [v(-6, 0.04, 2.6), v(6, 0.04, 2.25)]) { const pier = mesh(new THREE.BoxGeometry(0.65, 0.1, 1.65), 0x53676b); pier.position.copy(point); }
+    for (const point of [v(-6, 0.04, 2.6), v(6, 0.04, 2.25)]) {
+      const pier = mesh(craft.rounded(0.9, 0.16, 2.5), 0x53676b); pier.position.copy(point);
+      craft.instances(content, 'pier deck boards', new THREE.BoxGeometry(0.86, 0.012, 0.022), craft.material(0x92a4a3, 0.1, 0.9), Array.from({ length: 18 }, (_, i) => ({ position: point.clone().add(v(0, 0.088, -1.16 + i * 0.135)) })));
+      craft.instances(content, 'mooring bollards', new THREE.CylinderGeometry(0.037, 0.05, 0.1, 8), craft.material(0x172b36), [-1, 1].flatMap(side => [-0.8, 0, 0.8].map(z => ({ position: point.clone().add(v(side * 0.4, 0.1, z)) }))));
+    }
   }
   const selection = ring(0.72, 0xf6f5d9); selection.visible = false;
   let selected: number | null = null;
@@ -137,8 +144,10 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   const ledger = new THREE.Group(); content.add(ledger); ledger.visible = ['trade', 'economy', 'construction'].includes(kind);
   const moneyPaths = [0, 1].map(() => { const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([v(0, 0, 0), v(0, 0, 0)]), new THREE.LineBasicMaterial({ color: amber, transparent: true, opacity: 0.6 })); ledger.add(line); return line; });
   const reserve = Array.from({ length: 8 }, () => mesh(new THREE.CapsuleGeometry(0.09, 0.2, 3, 6), cyan));
+  reserve.forEach(troop => craft.trooper(troop, cyan));
   const payload = [0, 1, 2].map(() => mesh(new THREE.CapsuleGeometry(0.075, 0.17, 3, 6), amber));
   const troopsInCombat = [0, 1, 2].map(() => mesh(new THREE.CapsuleGeometry(0.09, 0.2, 3, 6), amber));
+  const combatRig = troopsInCombat.map(troop => craft.trooper(troop, amber));
   const front = new THREE.Line(new THREE.BufferGeometry().setFromPoints([v(0, 0, -2.4), v(0, 0, 2.4)]), new THREE.LineBasicMaterial({ color: red })); content.add(front); front.visible = kind === 'territory';
   const defense = mesh(new THREE.BoxGeometry(0.55, 0.45, 0.6), 0x936c65); defense.position.set(0.9, 0.32, 0.9); defense.visible = kind === 'territory';
   const capacity = Array.from({ length: 10 }, (_, i) => { const block = mesh(new THREE.BoxGeometry(0.25, 0.15, 0.25), cyan); block.position.set(3 + i % 5 * 0.36, 0.17, -0.7 + Math.floor(i / 5) * 0.4); return block; });
@@ -149,16 +158,27 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
   const patrolPoints = Array.from({ length: 65 }, (_, i) => { const angle = i / 64 * Math.PI * 2; return end.clone().add(v(Math.sin(angle) * 1.25, 0, (1 - Math.cos(angle)) * 1.25)); });
   const patrol = new THREE.Line(new THREE.BufferGeometry().setFromPoints(patrolPoints), new THREE.LineDashedMaterial({ color: cyan, dashSize: 0.12, gapSize: 0.12, transparent: true, opacity: 0.5 })); patrol.computeLineDistances(); content.add(patrol); patrol.visible = false;
   const airportPayout = Array.from({ length: 10 }, (_, i) => { const bar = mesh(new THREE.BoxGeometry(0.16, 0.09, 0.3), i < 8 ? amber : 0x607781); bar.material.wireframe = i >= 8; bar.position.copy(railCurve.getPointAt(0.92)).add(v(-1 + i * 0.22, 0.1, 1.1)); return bar; });
+  departure.userData.anchor = 0; destination.userData.anchor = 2; moving.userData.anchor = 1; enemy.userData.anchor = 2;
+  train.forEach(car => { car.userData.label = 'Track-bound train'; car.userData.anchor = 1; objects.push(car); });
+  columns.forEach(column => { column.userData.label = 'City construction'; column.userData.anchor = 1; objects.push(column); });
+  network.forEach((item, i) => { item.unit.userData.anchor = i; });
   function segment(line: THREE.Line, start: THREE.Vector3, finish: THREE.Vector3) {
     const points = line.geometry.attributes.position as THREE.BufferAttribute; points.setXYZ(0, start.x, start.y, start.z); points.setXYZ(1, finish.x, finish.y, finish.z); points.needsUpdate = true; line.geometry.computeBoundingSphere();
   }
   function anchor(id: number, label: string, position: THREE.Vector3) { anchors[id].label = label; anchors[id].position.copy(position); }
   function setState(s: WorldState) {
     const flight = clamp(s.flight);
+    water.phase.value = flight * 7 + s.outcome;
     moving.position.copy(curve.getPointAt(flight)); const tangent = curve.getTangentAt(flight); moving.rotation.y = Math.atan2(tangent.x, tangent.z);
+    moving.rotation.x = air ? -Math.atan2(tangent.y, Math.hypot(tangent.x, tangent.z)) : 0;
+    // Banking is determined by the curve, never a periodic sideways flick.
+    const before = curve.getTangentAt(Math.max(0, flight - 0.012)), after = curve.getTangentAt(Math.min(1, flight + 0.012));
+    moving.rotation.z = air && !s.engaging && !s.outcome ? Math.max(-0.12, Math.min(0.12, (before.x * after.z - before.z * after.x) * 1.8)) : 0;
     moving.visible = routeScene && s.carrierOpacity > 0.05;
-    (moving.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>).material.color.setHex(s.engaging ? red : kind === 'landing' ? amber : cyan);
+    const hull = (moving.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>).material;
+    hull.color.setHex(s.engaging ? red : kind === 'landing' ? amber : cyan); hull.emissive.copy(hull.color);
     trail.geometry.setDrawRange(0, Math.max(0, Math.floor(flight * 100) + 1));
+    routeTube.geometry.setDrawRange(0, Math.floor(flight * 100) * 36);
     motes.forEach((item, i) => { item.visible = routeScene && flight > 0 && s.carrierOpacity > 0.05; item.position.copy(curve.getPointAt(Math.max(0, flight - (i + 1) * 0.009))); });
     departure.scale.setScalar(0.65 + 0.35 * s.prepare);
     destination.scale.setScalar(0.65 + 0.35 * s.prepare);
@@ -170,6 +190,7 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
     if (kind === 'intercept' && s.engaging) moving.rotation.y = Math.atan2(enemy.position.x - moving.position.x, enemy.position.z - moving.position.z);
     lock.visible = kind === 'intercept' && s.engaging && s.targetVisible; lock.scale.setScalar(1.4 - s.interact * 0.4);
     shell.visible = kind === 'intercept' && s.shotVisible;
+    const weapon = moving.getObjectByName('forward weapon mount'); if (weapon) weapon.position.z = 0.1 - (s.shotVisible ? (1 - s.shot) * 0.035 : 0);
     const muzzle = moving.position.clone().add(enemy.position.clone().sub(moving.position).normalize().multiplyScalar(0.45));
     shell.position.lerpVectors(muzzle, enemy.position, s.shot);
     shell.quaternion.setFromUnitVectors(v(0, 1, 0), enemy.position.clone().sub(muzzle).normalize());
@@ -178,15 +199,17 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
     patrol.visible = kind === 'intercept' && s.outcome > 0;
     if (patrol.visible) { const angle = s.outcome * Math.PI * 2; moving.position.copy(end).add(v(Math.sin(angle) * 1.25, 0, (1 - Math.cos(angle)) * 1.25)); moving.rotation.y = Math.atan2(Math.cos(angle), Math.sin(angle)); radius.position.copy(moving.position); }
     rope.visible = kind === 'landing' && air && s.rope > 0 && s.carrierOpacity > 0.05;
+    ropeCable.visible = rope.visible; const ropeLength = s.rope * (end.y - 0.25); ropeCable.scale.y = Math.max(0.001, ropeLength); ropeCable.position.copy(end).add(v(0, -ropeLength / 2, 0));
     const ropeArray = rope.geometry.attributes.position as THREE.BufferAttribute; ropeArray.setXYZ(0, end.x, end.y, end.z); ropeArray.setXYZ(1, end.x, end.y - s.rope * (end.y - 0.25), end.z); ropeArray.needsUpdate = true;
-    troops.forEach((item, i) => { const d = s.descent[i] ?? 0; item.visible = kind === 'landing' && d > 0; item.position.set(end.x + (i - 1) * 0.23 * d + s.advance * 0.8, air ? end.y * (1 - d) + 0.3 * d : 0.3, end.z); });
-    train.forEach((car, i) => { const t = 0.1 + flight * 0.82 - i * 0.035; car.position.copy(railCurve.getPointAt(t)); const direction = railCurve.getTangentAt(t); car.rotation.y = Math.atan2(direction.x, direction.z); });
+    troops.forEach((item, i) => { const d = s.descent[i] ?? 0; item.visible = kind === 'landing' && d > 0; item.position.set(end.x + (i - 1) * 0.23 * d + s.advance * 0.8, air ? end.y * (1 - d) + 0.3 * d : 0.3, end.z); troopRig[i].arms.forEach((arm, side) => { arm.rotation.z = (side ? 1 : -1) * (air && d > 0 && d < 1 ? 2.4 : 0.2); }); troopRig[i].legs.forEach((leg, side) => { leg.rotation.x = d >= 1 ? Math.sin(s.advance * 12 + side * Math.PI) * 0.35 : 0; }); });
+    train.forEach((car, i) => { const t = 0.1 + flight * 0.82 - i * 0.035; car.position.copy(railCurve.getPointAt(t)); const direction = railCurve.getTangentAt(t); car.rotation.y = Math.atan2(direction.x, direction.z); trainAxles[i].forEach(axle => { axle.rotation.x = flight * 0.82 * railCurve.getLength() / 0.074; }); });
     const connection = s.connection ?? 1;
     if (kind === 'rail') {
       departure.position.copy(railCurve.getPointAt(0.1)); destination.position.copy(railCurve.getPointAt(0.92));
       railGroup.visible = connection > 0;
       railGroup.children.filter((child) => child instanceof THREE.Line && !couplers.includes(child)).forEach((line) => (line as THREE.Line).geometry.setDrawRange(0, Math.floor(connection * 160)));
       ties.count = Math.floor(connection * 90);
+      railSteel.forEach(rail => rail.geometry.setDrawRange(0, Math.floor(connection * 159) * 30));
       train.forEach((car) => { car.visible = connection >= 1; });
       couplers.forEach((line, i) => { line.visible = connection >= 1; const a = train[i].position.clone().add(v(-Math.sin(train[i].rotation.y), 0, -Math.cos(train[i].rotation.y)).multiplyScalar(0.29)); const b = train[i + 1].position.clone().add(v(Math.sin(train[i + 1].rotation.y), 0, Math.cos(train[i + 1].rotation.y)).multiplyScalar(0.29)); a.y += 0.14; b.y += 0.14; segment(line, a, b); });
       extension.geometry.setDrawRange(0, Math.floor(s.outcome * 81));
@@ -207,7 +230,7 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
     const commitment = kind === 'territory' ? s.flight : s.prepare;
     reserve.forEach((unit, i) => { unit.visible = (kind === 'landing' || kind === 'territory') && (i >= 3 || commitment === 0); unit.position.set(-6.8 + i % 4 * 0.28, 0.28, 3.3 + Math.floor(i / 4) * 0.3); });
     payload.forEach((unit, i) => { unit.visible = kind === 'landing' && s.prepare > 0 && s.carrierOpacity > 0.05 && (s.descent[i] ?? 0) === 0; unit.position.copy(v(-6.8 + i * 0.28, 0.28, 3.3)).lerp(moving.position.clone().add(v((i - 1) * 0.18, 0.24, 0)), s.prepare); });
-    troopsInCombat.forEach((unit, i) => { unit.visible = kind === 'territory' && commitment > 0 && !(i === 0 && s.interact > 0.7); unit.position.set(-6.2 + s.flight * 5.2 + s.outcome * 2.5, 0.3, (i - 1) * 0.85); });
+    troopsInCombat.forEach((unit, i) => { unit.visible = kind === 'territory' && commitment > 0 && !(i === 0 && s.interact > 0.7); unit.position.set(-6.2 + s.flight * 5.2 + s.outcome * 2.5, 0.3, (i - 1) * 0.85); unit.rotation.y = Math.PI / 2; combatRig[i].legs.forEach((leg, side) => { leg.rotation.x = Math.sin((s.flight * 5.2 + s.outcome * 2.5) * 9 + side * Math.PI) * 0.4; }); });
     front.position.set(-0.5 + Math.floor(s.outcome * 3) * 0.92, 0.21, 0);
     capacity.forEach((block, i) => { block.visible = ['construction', 'economy'].includes(kind) && i < 4 + Math.floor(s.outcome * 6); });
     if (kind === 'economy') { columns.forEach((column, i) => { column.visible = s.interact > 0; column.position.x = 4.4 + i * 0.45; column.scale.x = 0.4; column.scale.z = 0.5; column.position.y = column.scale.y / 2; }); }
@@ -240,20 +263,27 @@ export function buildOperationModel(kind: WorldKind, air: boolean) {
     const subject = kind === 'rail' ? train[0] : kind === 'network' ? network[1].unit : ['trade', 'landing', 'intercept'].includes(kind) ? moving : troopsInCombat[1];
     return { subject: ['construction', 'economy'].includes(kind) ? v(0, 0.6, 0) : subject.position, heading: subject.rotation.y, attention: anchors[2].position };
   }
-  return { scene, root, mapMaterial, setState, dispose, curve, railCurve, train, moving, enemy, shell, troops, objects, trail, anchors, focus, coins, partnerCoins, reserve, payload, couplers, railGroup, capacity, radius, airportPayout, patrol, environment, viewpoint };
+  return { scene, root, mapMaterial, setState, dispose, curve, railCurve, train, trainAxles, railSteel, moving, enemy, shell, troops, objects, trail, anchors, focus, coins, partnerCoins, reserve, payload, couplers, railGroup, capacity, radius, airportPayout, patrol, environment, viewpoint, waterPlane, shores };
 }
 
-export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: boolean, onInspect: (label: string) => void, onFailure?: () => void) {
+export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: boolean, onInspect: (label: string) => void, onFailure?: () => void, onSelect?: (anchor: number) => void) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
   host.appendChild(renderer.domElement);
   const model = buildOperationModel(kind, air);
+  // A prefiltered light environment makes bevels, glass and metal legible;
+  // it does not add a decorative background or a network-loaded texture.
+  const studio = new RoomEnvironment(), pmrem = new THREE.PMREMGenerator(renderer);
+  const reflections = pmrem.fromScene(studio, 0.06); model.scene.environment = reflections.texture; model.scene.environmentIntensity = 0.65;
+  studio.dispose(); pmrem.dispose();
   const labels = model.anchors.map(() => { const label = document.createElement('span'); label.className = 'operations-world-label'; host.appendChild(label); return label; });
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100); camera.position.set(9, 12, 15);
   const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = false; controls.enablePan = false; controls.enableZoom = false; controls.minPolarAngle = 0.15; controls.maxPolarAngle = 1.35; controls.enabled = false;
   renderer.domElement.style.touchAction = 'pan-y';
   let mode: CameraMode = 'cinematic', zoom = 1, disposed = false, visible = true, progress = 0, contextLost = false, calm = false, lookX = 0, lookY = 0;
+  let cameraFrame = 0, cameraTime = 0, cameraStarted = false, desiredFov = 42;
+  const desiredPosition = camera.position.clone(), desiredTarget = controls.target.clone();
   const draw = () => { if (!disposed && !contextLost && visible && !document.hidden) {
     renderer.render(model.scene, camera);
     const boxes: Array<{ x: number; y: number; width: number; height: number }> = [];
@@ -272,40 +302,69 @@ export function createOperationWorld(host: HTMLElement, kind: WorldKind, air: bo
   const loseContext = (event: Event) => { if (!disposed) { event.preventDefault(); contextLost = true; onFailure?.(); } };
   renderer.domElement.addEventListener('webglcontextlost', loseContext);
   controls.addEventListener('change', draw);
-  const resize = () => { const w = Math.max(1, host.clientWidth), h = Math.max(1, host.clientHeight); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); frameCamera(); draw(); };
+  const resize = () => { const w = Math.max(1, host.clientWidth), h = Math.max(1, host.clientHeight); renderer.setPixelRatio(scenePixelRatio(w, h, window.devicePixelRatio)); renderer.setSize(w, h); camera.aspect = w / h; cameraStarted = false; camera.updateProjectionMatrix(); frameCamera(); draw(); };
+  function stopCamera() { if (cameraFrame) cancelAnimationFrame(cameraFrame); cameraFrame = 0; cameraTime = 0; }
+  function settleCamera(time: number) {
+    cameraFrame = 0;
+    if (disposed || contextLost || !visible || document.hidden || mode === 'orbit') { cameraTime = 0; return; }
+    const alpha = cameraBlendFactor(cameraTime ? time - cameraTime : 16.67); cameraTime = time;
+    camera.position.lerp(desiredPosition, alpha); controls.target.lerp(desiredTarget, alpha); camera.fov += (desiredFov - camera.fov) * alpha;
+    const remaining = camera.position.distanceToSquared(desiredPosition) + controls.target.distanceToSquared(desiredTarget) + Math.abs(desiredFov - camera.fov);
+    if (remaining < 0.00001) { camera.position.copy(desiredPosition); controls.target.copy(desiredTarget); camera.fov = desiredFov; cameraTime = 0; }
+    else cameraFrame = requestAnimationFrame(settleCamera);
+    camera.updateProjectionMatrix(); camera.lookAt(controls.target); draw();
+  }
+  function aim(position: THREE.Vector3, target: THREE.Vector3, fov: number) {
+    desiredPosition.copy(position); desiredTarget.copy(target); desiredFov = fov;
+    if (!cameraStarted || calm || camera.position.distanceTo(position) > 12) {
+      stopCamera(); cameraStarted = true; camera.position.copy(position); controls.target.copy(target); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(target); return;
+    }
+    if (!cameraFrame && visible && !document.hidden) cameraFrame = requestAnimationFrame(settleCamera);
+  }
   function frameCamera() {
     if (mode === 'orbit') return;
     model.environment.visible = mode === 'ride' && !calm;
-    if (calm && mode !== 'top') { camera.position.set(0, 17, 15); controls.target.set(0, 0.4, 0); camera.fov = 45; camera.updateProjectionMatrix(); camera.lookAt(controls.target); return; }
+    if (calm && mode !== 'top') { aim(v(0, 17, 15), v(0, 0.4, 0), 45); return; }
     (model.scene.fog as THREE.Fog).near = mode === 'ride' ? 12 : 25;
     (model.scene.fog as THREE.Fog).far = mode === 'ride' ? 45 : 65;
     if (mode === 'ride') {
       const pose = immersivePose({ kind, air, progress, ...model.viewpoint(), lookX, lookY, aspect: camera.aspect, calm });
-      camera.position.set(pose.position.x, pose.position.y, pose.position.z);
-      controls.target.set(pose.target.x, pose.target.y, pose.target.z);
-      camera.fov = pose.fov; camera.updateProjectionMatrix(); camera.lookAt(controls.target); return;
+      aim(v(pose.position.x, pose.position.y, pose.position.z), v(pose.target.x, pose.target.y, pose.target.z), pose.fov); return;
     }
-    camera.fov = 42; camera.updateProjectionMatrix();
     const aspectAdjust = camera.aspect < 1.2 ? 1.2 / Math.max(0.5, camera.aspect) : 1;
     const distance = zoom * Math.min(1.6, aspectAdjust);
-    if (mode === 'top') { camera.position.set(0, 22 * distance, 0.01); controls.target.set(0, 0, 0); }
-    else { const a = -0.45 + progress * 0.6; camera.position.set(Math.sin(a) * 17 * distance, (11.5 - Math.sin(progress * Math.PI) * 2) * distance, Math.cos(a) * 17 * distance); controls.target.set((progress - 0.5) * 1.8, 0.45, -0.3); }
-    camera.lookAt(controls.target);
+    if (mode === 'top') aim(v(0, 22 * distance, 0.01), v(0, 0, 0), 42);
+    else { const a = -0.45 + progress * 0.6; aim(v(Math.sin(a) * 17 * distance, (11.5 - Math.sin(progress * Math.PI) * 2) * distance, Math.cos(a) * 17 * distance), v((progress - 0.5) * 1.8, 0.45, -0.3), 42); }
   }
   const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2();
-  const inspect = (event: PointerEvent) => { if (mode === 'orbit' && event.buttons) return; const box = renderer.domElement.getBoundingClientRect(); pointer.set((event.clientX - box.left) / box.width * 2 - 1, -(event.clientY - box.top) / box.height * 2 + 1); if (mode === 'ride' && !calm && event.pointerType === 'mouse') { lookX = pointer.x; lookY = pointer.y; frameCamera(); draw(); } ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(model.objects).find((item) => { let node: THREE.Object3D | null = item.object; while (node) { if (!node.visible) return false; node = node.parent; } return true; }); onInspect(hit?.object.userData.label ?? ''); };
+  function pick(event: PointerEvent) {
+    const box = renderer.domElement.getBoundingClientRect(); pointer.set((event.clientX - box.left) / box.width * 2 - 1, -(event.clientY - box.top) / box.height * 2 + 1); ray.setFromCamera(pointer, camera);
+    for (const hit of ray.intersectObjects(model.objects, true)) {
+      let node: THREE.Object3D | null = hit.object, hidden = false, label = '', anchor: number | undefined;
+      while (node) { if (!node.visible) hidden = true; if (node.userData.label) label = node.userData.label; if (typeof node.userData.anchor === 'number') anchor = node.userData.anchor; node = node.parent; }
+      if (!hidden && label) return { label, anchor };
+    }
+    return null;
+  }
+  const inspect = (event: PointerEvent) => { if (mode === 'orbit' && event.buttons) return; const hit = pick(event); if (mode === 'ride' && !calm && event.pointerType === 'mouse') { lookX = pointer.x; lookY = pointer.y; frameCamera(); draw(); } renderer.domElement.style.cursor = hit ? 'pointer' : mode === 'orbit' ? 'grab' : 'default'; onInspect(hit?.label ?? ''); };
+  let press: { x: number; y: number } | null = null;
+  const pressStart = (event: PointerEvent) => { press = { x: event.clientX, y: event.clientY }; };
+  const pressEnd = (event: PointerEvent) => { const start = press; press = null; if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5) return; const hit = pick(event); if (hit?.anchor !== undefined) onSelect?.(hit.anchor); };
+  const pressCancel = () => { press = null; };
   const leave = () => { onInspect(''); lookX = lookY = 0; if (mode === 'ride') { frameCamera(); draw(); } };
   renderer.domElement.addEventListener('pointermove', inspect); renderer.domElement.addEventListener('pointerleave', leave);
+  renderer.domElement.addEventListener('pointerdown', pressStart); renderer.domElement.addEventListener('pointerup', pressEnd); renderer.domElement.addEventListener('pointercancel', pressCancel);
   const resizeObserver = new ResizeObserver(resize); resizeObserver.observe(host);
-  const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) draw(); }); observer.observe(host);
-  document.addEventListener('visibilitychange', draw); resize();
+  const resume = () => { if (visible && !document.hidden) { cameraStarted = false; frameCamera(); draw(); } else stopCamera(); };
+  const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; resume(); }); observer.observe(host);
+  document.addEventListener('visibilitychange', resume); resize();
   return {
     update(state: WorldState, nextProgress: number) { progress = clamp(nextProgress); model.setState(state); frameCamera(); draw(); },
-    camera(next: CameraMode) { mode = next; controls.enabled = next === 'orbit'; renderer.domElement.style.touchAction = next === 'orbit' ? 'none' : 'pan-y'; model.environment.visible = next === 'ride' && !calm; frameCamera(); if (next === 'orbit') controls.update(); draw(); },
+    camera(next: CameraMode) { stopCamera(); cameraStarted = false; mode = next; controls.enabled = next === 'orbit'; renderer.domElement.style.touchAction = next === 'orbit' ? 'none' : 'pan-y'; model.environment.visible = next === 'ride' && !calm; frameCamera(); if (next === 'orbit') controls.update(); draw(); },
     comfort(value: boolean) { calm = value; lookX = lookY = 0; frameCamera(); draw(); },
     zoom(delta: number) { zoom = Math.max(0.65, Math.min(1.5, zoom + delta)); if (mode === 'orbit') { camera.position.sub(controls.target).multiplyScalar(delta > 0 ? 1.12 : 0.89).clampLength(7, 36).add(controls.target); } else frameCamera(); draw(); },
-    rotate(delta: number) { mode = 'orbit'; controls.enabled = true; const offset = camera.position.clone().sub(controls.target); offset.applyAxisAngle(v(0, 1, 0), delta); camera.position.copy(controls.target).add(offset); camera.lookAt(controls.target); controls.update(); draw(); },
+    rotate(delta: number) { stopCamera(); mode = 'orbit'; controls.enabled = true; const offset = camera.position.clone().sub(controls.target); offset.applyAxisAngle(v(0, 1, 0), delta); camera.position.copy(controls.target).add(offset); camera.lookAt(controls.target); controls.update(); draw(); },
     focus(id: number | null) { model.focus(id); labels.forEach((label, index) => label.classList.toggle('is-selected', id === index)); draw(); },
-    dispose() { disposed = true; observer.disconnect(); resizeObserver.disconnect(); document.removeEventListener('visibilitychange', draw); renderer.domElement.removeEventListener('webglcontextlost', loseContext); renderer.domElement.removeEventListener('pointermove', inspect); renderer.domElement.removeEventListener('pointerleave', leave); controls.dispose(); model.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); labels.forEach((label) => label.remove()); },
+    dispose() { disposed = true; stopCamera(); observer.disconnect(); resizeObserver.disconnect(); document.removeEventListener('visibilitychange', resume); renderer.domElement.removeEventListener('webglcontextlost', loseContext); renderer.domElement.removeEventListener('pointermove', inspect); renderer.domElement.removeEventListener('pointerleave', leave); renderer.domElement.removeEventListener('pointerdown', pressStart); renderer.domElement.removeEventListener('pointerup', pressEnd); renderer.domElement.removeEventListener('pointercancel', pressCancel); controls.dispose(); model.dispose(); reflections.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); labels.forEach((label) => label.remove()); },
   };
 }

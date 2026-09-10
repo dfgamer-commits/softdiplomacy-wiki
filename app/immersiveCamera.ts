@@ -45,3 +45,14 @@ export function wheelTimeline(progress: number, delta: number, deltaMode: number
   const pixels = safe(delta) * (deltaMode === 1 ? 16 : deltaMode === 2 ? 500 : 1);
   return bound(safe(progress) + bound(pixels, -180, 180) / 4500, 0, 1);
 }
+
+// Frame-rate independent camera settling. This smooths input, not simulation
+// time: a paused or rewound diagram always retains its exact story state.
+export function cameraBlendFactor(elapsedMs: number) {
+  return 1 - Math.exp(-bound(elapsedMs, 0, 50) / 80);
+}
+
+export function scenePixelRatio(width: number, height: number, deviceRatio: number) {
+  const pixels = Math.max(1, safe(width, 1) * safe(height, 1));
+  return Math.max(0.65, Math.min(2, Math.max(1, safe(deviceRatio, 1)), Math.sqrt(2_800_000 / pixels)));
+}

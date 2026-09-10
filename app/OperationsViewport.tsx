@@ -58,7 +58,7 @@ export default function OperationsViewport({ kind, progress, air = false, fleet 
       if (!entry.isIntersecting || started) return; started = true; setReady(false);
       void import('./operationWorld').then(({ createOperationWorld: create }) => {
         if (disposed) return;
-        try { const scene = create(host, kind, air, setInspected, () => { setReady(false); setFailed(true); }); sceneRef.current = scene; const value = latest.current; scene.update(stateFor(value.kind, value.progress, value.fleet), value.progress); scene.comfort(quietRef.current); scene.camera(cameraRef.current); setReady(true); setFailed(false); setDetail(null); }
+        try { const scene = create(host, kind, air, setInspected, () => { setReady(false); setFailed(true); }, (id) => { setDetail(id); sceneRef.current?.focus(id); }); sceneRef.current = scene; const value = latest.current; scene.update(stateFor(value.kind, value.progress, value.fleet), value.progress); scene.comfort(quietRef.current); scene.camera(cameraRef.current); setReady(true); setFailed(false); setDetail(null); }
         catch { setFailed(true); }
       }).catch(() => { if (!disposed) setFailed(true); });
     }, { rootMargin: '160px' }); observer.observe(host);
@@ -82,7 +82,7 @@ export default function OperationsViewport({ kind, progress, air = false, fleet 
     <div className="operations-fallback" hidden={ready}>{fallback}</div>
     {ready && <>
       <div className="operations-corner"><span>{topic?.steps[phase]}</span><span>SCHEMATIC · NOT TO SCALE</span></div>
-      <div className="operations-inspect" aria-live="polite">{inspected || (quiet ? 'Calm view · use the timeline' : camera === 'ride' ? 'Move your pointer to look around · scroll to advance' : camera === 'orbit' ? 'Drag to explore the scene' : 'Scroll to advance the operation')}</div>
+      <div className="operations-inspect" aria-live="polite">{inspected ? `${inspected} · click to inspect` : (quiet ? 'Calm view · use the timeline' : camera === 'ride' ? 'Move to look around · click a model to inspect' : camera === 'orbit' ? 'Drag to explore · click a model to inspect' : 'Scroll to advance · click a model to inspect')}</div>
       <div className="operations-camera" role="group" aria-label="Scene camera">
         <div>{(['ride', 'cinematic', 'orbit', 'top'] as const).map((mode) => <button type="button" key={mode} aria-pressed={camera === mode} onClick={() => changeCamera(mode)}>{mode === 'ride' ? 'Ride along' : mode === 'cinematic' ? 'Overview' : mode === 'orbit' ? 'Explore' : 'Top'}</button>)}</div>
         <div><button type="button" className="operations-enter" onClick={() => void enterScene()}>{fullscreen ? 'Exit full screen' : expanded ? 'Exit wide view' : 'Enter scene ↗'}</button><button type="button" aria-label="Calm camera view" aria-pressed={quiet} disabled={Boolean(playback?.reducedMotion)} onClick={() => setCalm(!calm)}>Calm view</button></div>

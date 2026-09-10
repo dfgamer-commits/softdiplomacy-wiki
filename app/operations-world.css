@@ -10,7 +10,9 @@
 .operations-camera button:disabled { opacity: .6; cursor: default; }
 .operations-workbench:fullscreen { width: 100%; height: 100%; display: flex; flex-direction: column; background: #06131d; padding: 0; overflow: auto; }
 html .operations-workbench:fullscreen .operations-viewport { width: 100%; height: auto; min-height: 300px; flex: 1 0 60vh; border: 0; border-radius: 0; }
-.operations-workbench:fullscreen > .operations-meaning { display: none; }
+.operations-workbench:fullscreen > .operations-meaning { display: block; padding: 0 max(20px, calc((100vw - 1120px) / 2)); background: #081c29; }
+.operations-workbench:fullscreen > .operations-meaning > :not(.operations-explanation) { display: none; }
+.operations-workbench:fullscreen .operations-explanation { margin: 0 0 12px; }
 .operations-fullscreen-playback { padding: 10px max(20px, calc((100vw - 1120px) / 2)); background: #081c29; border-top: 1px solid #375d6c; }
 .operations-fullscreen-playback > p { text-align: center; margin: 5px 0; color: #8eacb9; font-size: 12px; }
 .operations-screen-message { color: #d7dfc7; font-size: 14px; padding: 8px 12px; background: #172d32; }
