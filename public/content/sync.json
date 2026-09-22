@@ -1,8 +1,9 @@
 {
-  "auditedAt": "2026-09-05",
+  "auditedAt": "2026-09-23",
   "upstreamRevision": "b4bff7ebdac289893b6fa11675af8602a9c78a4f",
-  "upstreamWikiRevision": "25e014215f1080a64c9df2108acfe7750300b861",
-  "officialPageCount": 230,
+  "availableUpstreamRevision": "04ef237784da5d473e4b8f47bf143361689dd830",
+  "upstreamWikiRevision": "c10385d870520f23898b90fc54954d378650941b",
+  "officialPageCount": 238,
   "softDiplomacyPageCount": 8,
-  "totalPageCount": 238
+  "totalPageCount": 246
 }

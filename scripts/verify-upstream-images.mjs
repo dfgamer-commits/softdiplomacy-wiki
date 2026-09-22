@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
@@ -49,17 +49,21 @@ async function worker() {
     }
 
     const [localBytes, response] = await Promise.all([
-      readFile(localPath),
+      readFile(localPath).catch((error) => {
+        if (updateMode && error.code === 'ENOENT') return null;
+        throw error;
+      }),
       fetch(rawImageUrl(name)),
     ]);
     if (!response.ok) {
       throw new Error(`Official image unavailable (${response.status}): ${name}`);
     }
     const remoteBytes = Buffer.from(await response.arrayBuffer());
-    if (digest(localBytes, name) !== digest(remoteBytes, name)) {
+    if (!localBytes || digest(localBytes, name) !== digest(remoteBytes, name)) {
       if (!updateMode) {
         throw new Error(`Local image differs from official source: ${name}`);
       }
+      await mkdir(path.dirname(localPath), { recursive: true });
       await writeFile(localPath, remoteBytes);
       updated++;
       continue;

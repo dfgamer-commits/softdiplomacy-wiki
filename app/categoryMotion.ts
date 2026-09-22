@@ -145,8 +145,8 @@ export const CATEGORY_TOPICS: readonly CategoryTopic[] = [
       "Gain capacity"
     ],
     "captions": [
-      "Buildings are build-able items that can be built on individual pixels on the game maps.",
-      "Some buildings have specific requirements that limit where they can be built. For example, ports must be built near water.",
+      "Buildings (also called structures or buildables) are the things you spend gold on in OpenFront.",
+      "Structures must be at least 15 tiles apart, and some have placement rules of their own — ports need a coastal tile, warships are launched onto water.",
       "The first city costs 125,000 gold , 250,000 for the second, 500,000 for the third, and then 1,000,000 gold for every city after that.",
       "The City building increases a nation's population capacity/limit."
     ],
@@ -172,11 +172,11 @@ export const CATEGORY_TOPICS: readonly CategoryTopic[] = [
     "wikiSources": [
       [
         "Buildings",
-        "Description"
+        ""
       ],
       [
         "Buildings",
-        "Description"
+        "Building"
       ],
       [
         "City",

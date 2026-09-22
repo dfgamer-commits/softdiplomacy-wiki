@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { isDeepStrictEqual } from 'node:util';
 import { CATEGORY_TOPICS } from '../app/categoryMotion.ts';
+import { loadOfficialPages } from './official-wiki-source.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const contentRoot = path.join(projectRoot, 'public', 'content');
@@ -10,19 +11,6 @@ const pagesRoot = path.join(contentRoot, 'pages');
 const args = process.argv.slice(2);
 const sourceIndex = args.indexOf('--source');
 const sourcePath = sourceIndex >= 0 ? args[sourceIndex + 1] : undefined;
-
-async function loadOfficialPages() {
-  if (sourcePath) {
-    return JSON.parse(await readFile(path.resolve(sourcePath), 'utf8'));
-  }
-  const response = await fetch(
-    'https://raw.githubusercontent.com/openfrontio/wiki/main/src/data/pages.json',
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to download official wiki data: ${response.status}`);
-  }
-  return response.json();
-}
 
 function cleanHtml(html) {
   return html
@@ -69,7 +57,8 @@ async function assertFile(filePath, message) {
   }
 }
 
-const officialPages = await loadOfficialPages();
+const sync = JSON.parse(await readFile(path.join(contentRoot, 'sync.json'), 'utf8'));
+const officialPages = await loadOfficialPages({ revision: sync.upstreamWikiRevision, sourcePath });
 const officialSlugs = new Set();
 const index = JSON.parse(
   await readFile(path.join(contentRoot, 'index.json'), 'utf8'),
@@ -122,6 +111,9 @@ for (const sourceEntry of officialPages) {
 // independently of preserving the imported article files.
 const canonicalText = (value) => plainText(value)
   .replace(/&nbsp;/g, ' ')
+  // Astro's smart typography changes quotation marks, not source wording.
+  .replace(/[‘’]/g, "'")
+  .replace(/[“”]/g, '"')
   .replace(/\s+([.,:;!?])/g, '$1')
   .replace(/\s+/g, ' ').trim();
 let citedPassages = 0;
